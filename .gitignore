@@ -51,3 +51,5 @@ node_modules/
 .pnpm-store/
 
 /packages/ssh/.ssh-launcher-test-*/
+# Local voice helper builds for desktop dev; release builds stage their own copy.
+apps/desktop/prod-resources/voice/
