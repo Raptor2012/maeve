@@ -220,7 +220,6 @@ import {
 } from "./ComposerAttachmentStrip";
 import { CollapsedComposerStopAction, ComposerPrimaryActions } from "./ComposerPrimaryActions";
 import { ComposerFooterPrimaryActions } from "./ComposerFooterControls";
-import { VoiceWaveButton } from "../desktop/VoiceWaveButton";
 import { ComposerPendingUserInputPanel } from "./ComposerPendingUserInputPanel";
 import { resolveComposerMenuActiveItemId } from "./composerMenuHighlight";
 import { buildPullRequestReferenceContext } from "../pullRequest/pullRequestDetail.logic";
@@ -3846,7 +3845,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                   >
                     {composerControls}
                   </div>
-                  <VoiceWaveButton />
                   <ComposerFooterPrimaryActions
                     // Stop state belongs to one thread; the composer stays mounted across threads.
                     key={`${environmentId}:${activeThreadId ?? "new"}`}
