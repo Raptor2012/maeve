@@ -585,6 +585,8 @@ export const WS_METHODS = {
   deviceDetail: "device.detail",
   deviceAction: "device.action",
 
+  voiceSynthesize: "voice.synthesize",
+
   serverProbe: "server.probe",
   serverGetConfig: "server.getConfig",
   serverGetNpmRelease: "server.getNpmRelease",
@@ -768,6 +770,16 @@ const WsServerGetConfigRpc = Rpc.make(WS_METHODS.serverGetConfig, {
   payload: Schema.Struct({}),
   success: ServerConfig,
   error: Schema.Union([KeybindingsConfigError, ServerSettingsError, EnvironmentAuthorizationError]),
+});
+
+export class VoiceSpeechError extends Schema.TaggedError<VoiceSpeechError>()("VoiceSpeechError", {
+  message: Schema.String,
+}) {}
+
+const WsVoiceSynthesizeRpc = Rpc.make(WS_METHODS.voiceSynthesize, {
+  payload: Schema.Struct({ text: TrimmedNonEmptyString.check(Schema.isMaxLength(4_000)) }),
+  success: Schema.Struct({ wavBase64: Schema.String }),
+  error: Schema.Union([VoiceSpeechError, EnvironmentAuthorizationError]),
 });
 
 export const WsServerRefreshProvidersRpc = Rpc.make(WS_METHODS.serverRefreshProviders, {
@@ -2476,6 +2488,7 @@ export class RpcScopeAuthorization extends RpcMiddleware.Service<RpcScopeAuthori
 ) {}
 
 export const WsRpcGroup = RpcGroup.make(
+  WsVoiceSynthesizeRpc,
   WsIssuesListRpc,
   WsIssuesDetailRpc,
   WsIssuesCommentsRpc,
