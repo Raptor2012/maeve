@@ -12,6 +12,7 @@ import * as Hex from "effect/encoding/Hex";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
+import { resolveVoiceSpeechEnv } from "../voice/voiceModels.ts";
 import * as PlatformError from "effect/PlatformError";
 import * as Ref from "effect/Ref";
 import * as Schema from "effect/Schema";
@@ -571,6 +572,16 @@ const resolvePrimaryStartConfig = Effect.fn("desktop.backendConfiguration.resolv
         T3CODE_DESKTOP_SHELL_DISCOVERY_PENDING: "1",
         T3CODE_CLI_PATH: Option.getOrUndefined(input.cliPath),
         [DESKTOP_HOST_SCOPE_ENV]: input.hostScope,
+        T3CODE_VOICE_SPEECH: resolveVoiceSpeechEnv({
+          voiceDirectory: environment.path.join(environment.baseDir, "voice"),
+          platform: environment.platform,
+          binaryCandidates: environment.resolveResourcePathCandidates(
+            environment.path.join(
+              "voice",
+              environment.platform === "win32" ? "t3-maeve-tts.exe" : "t3-maeve-tts",
+            ),
+          ),
+        }),
       },
       extendEnv: true,
       bootstrap,

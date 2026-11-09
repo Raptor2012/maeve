@@ -170,6 +170,7 @@ import {
 } from "../../state/threads";
 import { appAtomRegistry } from "../../state/atom-registry";
 import { threadStreamHaptics } from "./threadStreamHaptics";
+import { threadVoiceReplies, useHostVoice } from "../voice-input/threadVoiceReplies";
 import { useAtomCommand } from "../../state/use-atom-command";
 import { orchestrationEnvironment } from "../../state/orchestration";
 import type { PendingUserInputDraftAnswer } from "@t3tools/client-runtime/state/pending-user-input";
@@ -1272,6 +1273,8 @@ function ThreadDetailBody(
       : { width: Math.max(0, columnWidth - controlInsets.left - controlInsets.right) };
   const selectedInstanceId = props.selectedThread.modelSelection.instanceId;
   useAtomMount(threadStreamHaptics(props.selectedThreadDetailRef));
+  useAtomMount(threadVoiceReplies(props.selectedThreadDetailRef));
+  useHostVoice(props.environmentId);
   const selectedProviderSkills = (() => {
     const provider = props.serverConfig?.providers.find(
       (candidate) => candidate.instanceId === selectedInstanceId,
