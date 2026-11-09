@@ -88,6 +88,8 @@ import IconLayoutSidebarRight from "@tabler/icons-react-native/IconLayoutSidebar
 import IconLetterSpacing from "@tabler/icons-react-native/IconLetterSpacing";
 import IconMicrophone from "@tabler/icons-react-native/IconMicrophone";
 import IconWaveSine from "@tabler/icons-react-native/IconWaveSine";
+import IconVolume from "@tabler/icons-react-native/IconVolume";
+import IconVolumeOff from "@tabler/icons-react-native/IconVolumeOff";
 import IconLink from "@tabler/icons-react-native/IconLink";
 import IconListNumbers from "@tabler/icons-react-native/IconListNumbers";
 import IconMenu2 from "@tabler/icons-react-native/IconMenu2";
@@ -243,6 +245,8 @@ const ANDROID_ICON_BY_SF_SYMBOL = {
   magnifyingglass: IconSearch,
   mic: IconMicrophone,
   waveform: IconWaveSine,
+  "speaker.wave.2": IconVolume,
+  "speaker.slash": IconVolumeOff,
   paintbrush: IconPalette,
   pencil: IconPencil,
   "person.crop.circle": IconUserCircle,

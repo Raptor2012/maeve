@@ -5,7 +5,7 @@ import { useAppearancePreferences } from "../settings/appearance/AppearancePrefe
 import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/shell";
 import { settlePromise, squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
 import { AsyncResult } from "effect/reactivity";
-import { useAtomValue } from "@effect/atom-react";
+import { useAtomSet, useAtomValue } from "@effect/atom-react";
 import { clampFileAttachmentUploadBytes } from "@t3tools/client-runtime/state/attachments";
 import { pastedTextDisposition, replaceTextSelection } from "@t3tools/client-runtime/text-paste";
 import {
@@ -116,8 +116,8 @@ import {
   ComposerDictationDraftContent,
   ComposerDictationError,
   ComposerDictationPrimaryAction,
-  ComposerDictationStartAction,
-  ComposerTalkAction,
+  ComposerDictateAction,
+  ComposerReadAloudToggle,
   ComposerDictationStatus,
   ComposerDictationToolbar,
 } from "../voice-input/ComposerDictationControl";
@@ -127,7 +127,9 @@ import {
   stopSpokenReply,
   useVoiceAgentActivity,
 } from "../voice-input/threadVoiceReplies";
+import { useHostDictation } from "../voice-input/useHostDictation";
 import { VoiceOrb } from "../voice-input/VoiceOrb";
+import { mobilePreferencesAtom, updateMobilePreferencesAtom } from "../../state/preferences";
 import type { VoiceOrbState } from "../voice-input/voiceOrbPage";
 import { useVoiceInputController } from "../voice-input/useVoiceInputController";
 import { resolveVoiceComposerPresentation } from "../voice-input/voiceInputPresentation";
@@ -474,20 +476,28 @@ export const ThreadComposer = function ThreadComposer(props: ThreadComposerProps
     voiceInput.elapsedSeconds,
     messages,
   );
-  // Talking keeps the normal toolbar, so the button that stops it stays where it was tapped.
-  const [talking, setTalking] = useState(false);
-  const spokenTurn = useRef(false);
   const voiceRepliesRef = {
     environmentId: props.environmentId,
     threadId: props.selectedThread.id,
   };
-  const isVoiceInputPresented = voicePresentation.statusKind === "active" && !talking;
+  const isVoiceInputPresented = voicePresentation.statusKind === "active";
+  const hostDictation = useHostDictation({
+    environmentId: props.environmentId,
+    readDraft: () => getComposerDraftSnapshot(composerDraftKey).text,
+    writeDraft: onChangeDraftMessage,
+  });
+  const preferences = useAtomValue(mobilePreferencesAtom);
+  const updatePreferences = useAtomSet(updateMobilePreferencesAtom);
+  const readAloudKey = scopedThreadKey(props.environmentId, props.selectedThread.id);
+  const readAloud =
+    AsyncResult.isSuccess(preferences) &&
+    (preferences.value.readAloudThreads ?? []).includes(readAloudKey);
   const voiceAgent = useVoiceAgentActivity(voiceRepliesRef);
   const voicePhase = voiceInput.state.phase;
   const voiceOrbState: VoiceOrbState | null =
-    voicePhase === "preparing" || voicePhase === "recording"
+    voicePhase === "preparing" || voicePhase === "recording" || hostDictation.phase === "live"
       ? "dictating"
-      : voicePhase === "transcribing"
+      : voicePhase === "transcribing" || hostDictation.phase === "finishing"
         ? "processing"
         : voiceAgent.speaking
           ? "speaking"
@@ -578,18 +588,39 @@ export const ThreadComposer = function ThreadComposer(props: ThreadComposerProps
     settingsSheetPresentation.onEditorFocusChange(false);
     onEditorFocusChange?.(false);
   };
-  const toggleTalk = () => {
-    if (!talking) {
-      stopSpokenReply();
-      spokenTurn.current = true;
-      setTalking(true);
-      voiceInput.start();
-    } else if (voicePhase === "recording") {
-      void voiceInput.stop();
-    } else if (voicePhase !== "transcribing") {
-      voiceInput.cancel();
+  const toggleDictation = () => {
+    if (hostDictation.phase === "live") {
+      hostDictation.stop();
+      return;
     }
+    if (hostDictation.phase === "finishing") return;
+    stopSpokenReply();
+    // Without a host that can transcribe, the phone's own transcription takes over.
+    void hostDictation.start().then((started) => {
+      if (!started) voiceInput.start();
+    });
   };
+  const toggleReadAloud = () => {
+    if (readAloud) stopSpokenReply();
+    updatePreferences({
+      transform: (current) => {
+        const threads = current.readAloudThreads ?? [];
+        return {
+          readAloudThreads: threads.includes(readAloudKey)
+            ? threads.filter((key) => key !== readAloudKey)
+            : [...threads, readAloudKey].slice(-200),
+        };
+      },
+    });
+  };
+  const replyThreadId = props.selectedThread.id;
+  const replyEnvironmentId = props.environmentId;
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- applies the saved read-aloud choice to the reply follower, which runs outside React
+  useEffect(() => {
+    const ref = { environmentId: replyEnvironmentId, threadId: replyThreadId };
+    if (readAloud) armVoiceReplies(ref);
+    else disarmVoiceReplies(ref);
+  }, [readAloud, replyEnvironmentId, replyThreadId]);
   const handleSend = async (followUp?: ActiveTurnComposerAction) => {
     if (isSubmissionLocked || sendBlockedReason !== null) return;
     // Sending now would leave a still-converting pasted image out of the turn, so wait for it.
@@ -603,9 +634,8 @@ export const ThreadComposer = function ThreadComposer(props: ThreadComposerProps
     if (inFlightThreadIdsRef.current.has(threadKey)) return;
     inFlightThreadIdsRef.current.add(threadKey);
     await inputRef.current?.flushPendingInput();
-    if (spokenTurn.current) armVoiceReplies(voiceRepliesRef);
-    else disarmVoiceReplies(voiceRepliesRef);
-    spokenTurn.current = false;
+    // Sending mid-dictation ends it, so late words cannot refill the emptied box.
+    hostDictation.cancel();
     const draftAtSend = getComposerDraftSnapshot(composerDraftKey);
     const stillSendable = () => {
       const draft = getComposerDraftSnapshot(composerDraftKey);
@@ -633,18 +663,6 @@ export const ThreadComposer = function ThreadComposer(props: ThreadComposerProps
       projectTitle: props.environmentLabel ?? "T3 Code",
     });
   };
-  const talkSawActivity = useRef(false);
-  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- follows the voice recorder's async phases, which end a talking turn outside React
-  useEffect(() => {
-    if (!talking) {
-      talkSawActivity.current = false;
-      return;
-    }
-    if (voicePhase !== "idle" && voicePhase !== "error") talkSawActivity.current = true;
-    else if (voicePhase === "error" || talkSawActivity.current) {
-      setTalking(false);
-    }
-  }, [talking, voicePhase]);
 
   const nativeImageSubmit = useSubmitAfterNativeImages({
     draftKey: composerDraftKey,
@@ -852,7 +870,12 @@ export const ThreadComposer = function ThreadComposer(props: ThreadComposerProps
         ) : null}
 
         {voiceOrbState ? (
-          <VoiceOrb state={voiceOrbState} audioLevels={voiceInput.audioLevels} />
+          <VoiceOrb
+            state={voiceOrbState}
+            audioLevels={
+              hostDictation.phase === "idle" ? voiceInput.audioLevels : hostDictation.audioLevels
+            }
+          />
         ) : null}
 
         <ComposerSurface
@@ -1101,22 +1124,19 @@ export const ThreadComposer = function ThreadComposer(props: ThreadComposerProps
                   {compactControl}
                   {modelControl}
                 </Animated.View>
-                <ComposerDictationStartAction
+                <ComposerReadAloudToggle
                   size={usesLargeControls ? "large" : "regular"}
-                  state={voiceInput.state}
-                  isAvailable={voiceInput.isAvailable}
-                  disabled={isSubmissionLocked}
-                  onStart={voiceInput.start}
-                  onCancel={voiceInput.cancel}
+                  on={readAloud}
+                  onPress={toggleReadAloud}
                 />
-                <ComposerTalkAction
+                <ComposerDictateAction
                   size={usesLargeControls ? "large" : "regular"}
                   isAvailable={voiceInput.isAvailable}
                   disabled={isSubmissionLocked}
-                  active={talking}
-                  transcribing={talking && voicePhase === "transcribing"}
-                  audioLevels={voiceInput.audioLevels}
-                  onPress={toggleTalk}
+                  active={hostDictation.phase === "live"}
+                  transcribing={hostDictation.phase === "finishing"}
+                  audioLevels={hostDictation.audioLevels}
+                  onPress={toggleDictation}
                 />
                 {showStopAction ? (
                   <ComposerActionButton

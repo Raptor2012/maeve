@@ -98,7 +98,7 @@ const STOP_PENDING_MAX_MS = 10_000;
 // The action that takes Stop's place ignores clicks this long, so repeat Stop clicks can't resume.
 const STOP_LANDED_CLICK_GUARD_MS = 500;
 
-export const messageActionPillClassName =
+const messageActionPillClassName =
   "inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-message-action font-medium text-base text-message-action-foreground shadow-xs shadow-message-action/24 outline-none hover:bg-message-action-hover focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-64 disabled:shadow-none sm:text-sm";
 
 const preventPointerFocus: PointerEventHandler<HTMLElement> = (event) => {

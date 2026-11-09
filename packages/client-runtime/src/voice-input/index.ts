@@ -11,6 +11,7 @@ export {
   type VoiceRecorder,
   type VoiceRecorderStatus,
 } from "./controller.ts";
+export { composeDictatedPrompt } from "./dictatedPrompt.ts";
 export { ReplyReader } from "./replyText.ts";
 export {
   cancelEnvironmentSpeechModelDownload,
