@@ -183,6 +183,10 @@
       "types": "./src/providerSubProviders.ts",
       "default": "./src/providerSubProviders.ts"
     },
+    "./voice-input/dictatedPrompt": {
+      "types": "./src/voice-input/dictatedPrompt.ts",
+      "default": "./src/voice-input/dictatedPrompt.ts"
+    },
     "./voice-input": {
       "types": "./src/voice-input/index.ts",
       "default": "./src/voice-input/index.ts"
