@@ -203,12 +203,17 @@ class OrbAudio {
 
   async devices(kind: "audioinput" | "audiooutput") {
     const all = await navigator.mediaDevices.enumerateDevices();
-    return all
-      .filter((device) => device.kind === kind && device.deviceId !== "communications")
-      .map((device) => ({
-        id: device.deviceId === "default" ? "" : device.deviceId,
-        label: device.label,
-      }));
+    return (
+      all
+        .filter(
+          (device) =>
+            device.kind === kind &&
+            device.deviceId !== "communications" &&
+            device.deviceId !== "default",
+        )
+        // The orb page keys each option by `name` and adds its own "System default" entry.
+        .map((device) => ({ name: device.deviceId, label: device.label }))
+    );
   }
 
   async setSpeaker(deviceId: string): Promise<void> {
@@ -227,14 +232,20 @@ class OrbAudio {
   private async ensureCapture() {
     if (this.capture && this.capture.deviceId === this.micDevice) return this.capture;
     this.closeCapture();
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        ...(this.micDevice ? { deviceId: { exact: this.micDevice } } : {}),
-        channelCount: 1,
-        echoCancellation: false,
-        noiseSuppression: false,
-        autoGainControl: false,
-      },
+    const open = (deviceId: string) =>
+      navigator.mediaDevices.getUserMedia({
+        audio: {
+          ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
+          channelCount: 1,
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+        },
+      });
+    // A saved microphone that is unplugged, or no longer known, falls back to the system default.
+    const stream = await open(this.micDevice).catch((error: Error) => {
+      if (!this.micDevice || error.name !== "OverconstrainedError") throw error;
+      return open("");
     });
     const context = new AudioContext({ sampleRate: 16000, latencyHint: "interactive" });
     await context.audioWorklet.addModule(workletUrl(CAPTURE_WORKLET));
