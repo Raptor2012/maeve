@@ -122,6 +122,10 @@ jobs:
       - name: Align package versions
         run: node scripts/update-release-package-versions.ts "${{ env.VERSION }}"
 
+      # T3 Tools' trademark policy: distributed builds carry the fork's own name, icons and wordmark.
+      - name: Apply Maeve branding
+        run: node scripts/fork-brand.mjs
+
       - name: Build desktop artifact
         shell: bash
         env:
