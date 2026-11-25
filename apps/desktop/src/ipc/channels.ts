@@ -164,4 +164,7 @@ export const VOICE_DELIVERY_DONE_CHANNEL = "desktop:voice-delivery-done";
 export const VOICE_DOCK_CHANNEL = "desktop:voice-dock";
 export const VOICE_STATE_CHANNEL = "desktop:voice-state";
 export const VOICE_COMMAND_CHANNEL = "desktop:voice-command";
+export const VOICE_SETUP_STATUS_CHANNEL = "desktop:voice-setup-status";
+export const VOICE_SETUP_GET_CHANNEL = "desktop:voice-setup-get";
+export const VOICE_SETUP_COMMAND_CHANNEL = "desktop:voice-setup-command";
 export const VOICE_USER_MESSAGE_CHANNEL = "desktop:voice-user-message";

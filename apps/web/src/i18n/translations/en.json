@@ -3212,7 +3212,10 @@
     {
       "t": "span",
       "i": 2,
-      "c": [" ", "on the computer that opened this page"]
+      "c": [
+        " ",
+        "on the computer that opened this page"
+      ]
     }
   ],
   "b2d53b4d1d48fbef": [
@@ -3224,7 +3227,10 @@
     {
       "t": "span",
       "i": 2,
-      "c": [" ", "· whoever runs it gets this access"]
+      "c": [
+        " ",
+        "· whoever runs it gets this access"
+      ]
     }
   ],
   "c54cc9c75db9dc58": "Only approve a sign-in you just started.",
@@ -12984,5 +12990,19 @@
   "201490988858b511": "withdrawn by {by}",
   "99451a5d2d40440f": "Withdrawn by {by}.",
   "3ee30a50b70fffab": "Withdrawn by {by}: {reason}",
-  "92e129bf413a1220": "withdrawn"
+  "92e129bf413a1220": "withdrawn",
+  "95465d95f496951c": "Downloading voice models: {percent}%. Click to cancel.",
+  "51c59697d44bb05e": "Installing voice…",
+  "7eeddbc19eaef47a": "Voice setup failed: {error} Click to try again.",
+  "505aede3f393ddf1": "Set up voice",
+  "a984bf8aa20a1209": "Set up local voice?",
+  "03939140c661b438": [
+    "This downloads about ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " GB of speech recognition, cleanup and voice models from Hugging Face and GitHub. After that, dictation and spoken replies run entirely on this computer."
+  ]
 }

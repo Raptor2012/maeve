@@ -3212,7 +3212,10 @@
     {
       "t": "span",
       "i": 2,
-      "c": [" ", "no computador que abriu esta página"]
+      "c": [
+        " ",
+        "no computador que abriu esta página"
+      ]
     }
   ],
   "b2d53b4d1d48fbef": [
@@ -3224,7 +3227,10 @@
     {
       "t": "span",
       "i": 2,
-      "c": [" ", "· quem executar recebe este acesso"]
+      "c": [
+        " ",
+        "· quem executar recebe este acesso"
+      ]
     }
   ],
   "c54cc9c75db9dc58": "Aprove apenas um login que você acabou de iniciar.",
@@ -12975,5 +12981,19 @@
   "201490988858b511": "retirada por {by}",
   "99451a5d2d40440f": "Retirada por {by}.",
   "3ee30a50b70fffab": "Retirada por {by}: {reason}",
-  "92e129bf413a1220": "retirada"
+  "92e129bf413a1220": "retirada",
+  "95465d95f496951c": "Baixando modelos de voz: {percent}%. Clique para cancelar.",
+  "51c59697d44bb05e": "Instalando a voz…",
+  "7eeddbc19eaef47a": "Falha ao configurar a voz: {error} Clique para tentar de novo.",
+  "505aede3f393ddf1": "Configurar voz",
+  "a984bf8aa20a1209": "Configurar a voz local?",
+  "03939140c661b438": [
+    "Isso baixa cerca de ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " GB de modelos de reconhecimento de fala, limpeza e voz do Hugging Face e do GitHub. Depois disso, o ditado e as respostas faladas funcionam inteiramente neste computador."
+  ]
 }

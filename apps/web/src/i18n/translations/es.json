@@ -3212,7 +3212,10 @@
     {
       "t": "span",
       "i": 2,
-      "c": [" ", "en el ordenador que abrió esta página"]
+      "c": [
+        " ",
+        "en el ordenador que abrió esta página"
+      ]
     }
   ],
   "b2d53b4d1d48fbef": [
@@ -3224,7 +3227,10 @@
     {
       "t": "span",
       "i": 2,
-      "c": [" ", "· quien lo ejecute obtiene este acceso"]
+      "c": [
+        " ",
+        "· quien lo ejecute obtiene este acceso"
+      ]
     }
   ],
   "c54cc9c75db9dc58": "Aprueba solo un inicio de sesión que acabes de iniciar.",
@@ -12970,5 +12976,19 @@
   "201490988858b511": "retirada por {by}",
   "99451a5d2d40440f": "Retirada por {by}.",
   "3ee30a50b70fffab": "Retirada por {by}: {reason}",
-  "92e129bf413a1220": "retirada"
+  "92e129bf413a1220": "retirada",
+  "95465d95f496951c": "Descargando modelos de voz: {percent} %. Haz clic para cancelar.",
+  "51c59697d44bb05e": "Instalando la voz…",
+  "7eeddbc19eaef47a": "No se pudo configurar la voz: {error} Haz clic para reintentar.",
+  "505aede3f393ddf1": "Configurar la voz",
+  "a984bf8aa20a1209": "¿Configurar la voz local?",
+  "03939140c661b438": [
+    "Se descargarán unos ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " GB de modelos de reconocimiento de voz, limpieza y voz desde Hugging Face y GitHub. Después, el dictado y las respuestas habladas funcionan por completo en este equipo."
+  ]
 }
