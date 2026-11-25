@@ -1,5 +1,5 @@
 > [!IMPORTANT]
-> **Unofficial fork.** This repository is an unofficial fork based on the T3 Code source code, adding fully local voice (dictation and a spoken voice agent). It is not affiliated with, endorsed by or maintained by T3 Tools, Inc. For the official app, see [github.com/pingdotgg/t3code](https://github.com/pingdotgg/t3code). This fork publishes no builds.
+> **Unofficial fork.** This repository is an unofficial fork based on the T3 Code source code, adding fully local voice (dictation and a spoken voice agent). It is not affiliated with, endorsed by or maintained by T3 Tools, Inc. For the official app, see [github.com/pingdotgg/t3code](https://github.com/pingdotgg/t3code). Builds from this fork are published as **Maeve**, with their own name and icons.
 
 <p align="center">
   <a href="https://t3.codes">
