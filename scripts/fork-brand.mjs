@@ -116,7 +116,7 @@ edit("apps/mobile/app.config.ts", [
 // Installer and OS-facing strings in the desktop packaging script.
 {
   const file = NodePath.join(root, "scripts", "build-desktop-artifact.ts");
-  write(file, read(file).replaceAll('"T3 Code', `"${BRAND}`));
+  write(file, read(file).replaceAll('"T3 Code', `"${BRAND}`).replaceAll('"T3-Code-', `"${BRAND}-`));
 }
 
 // 4. Regenerate catalogs for the renamed text, then carry every translation over to its new key.
@@ -145,7 +145,8 @@ if (!skipI18n) {
       const current = JSON.parse(read(file));
       for (const [oldKey, newKey] of moves) {
         const old = locales[name][oldKey];
-        if (old === undefined || current[newKey] !== undefined) continue;
+        // The generator fills new keys with the English source; the real translation wins.
+        if (old === undefined) continue;
         current[newKey] = JSON.parse(JSON.stringify(old).replaceAll("T3 Code", BRAND));
       }
       write(file, `${JSON.stringify(current, null, 2)}\n`);
