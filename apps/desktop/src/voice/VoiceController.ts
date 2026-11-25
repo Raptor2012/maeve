@@ -31,6 +31,7 @@ const SURFACE = { width: 340, height: 480 };
 const LINGER_MS = 1200;
 const FADE_MS = 500;
 const MIN_DICTATION_SAMPLES = 16000 * 0.25;
+const SILENT_SAMPLE = 1e-4;
 const TICK_MS = 33;
 const DRAG_HOLD_MS = 600;
 const LEAVE_T3_MS = 300;
@@ -345,6 +346,12 @@ export class VoiceController {
       this.dictState = "";
       return;
     }
+    // A muted or virtual input (such as an idle headset driver) delivers exact zeros.
+    if (!samples.some((sample) => Math.abs(sample) > SILENT_SAMPLE)) {
+      this.failDictation("The microphone sent only silence. Pick another one in the orb's menu.");
+      this.options.log("voice dictation silent microphone", {});
+      return;
+    }
     try {
       const result = await this.engine.dictate(samples, 16000, this.prefs.cleanup !== false);
       if (session !== this.dictSession) return;
@@ -355,7 +362,8 @@ export class VoiceController {
         cleanup: result.cleanup,
       });
       if (!result.text) {
-        this.dictState = "";
+        if (result.raw.trim()) this.dictState = "";
+        else this.failDictation("No words heard.");
         return;
       }
       this.dictPreviewText = result.text;

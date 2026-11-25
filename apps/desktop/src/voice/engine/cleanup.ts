@@ -12,6 +12,12 @@ export interface CleanupResult {
 // Long dictations take several seconds to clean up; never cut one off at a short fixed limit.
 const timeoutMs = (text: string) => Math.min(30_000, 4_000 + text.length * 20);
 
+// The prompt answers nothing for filler-only speech ("um, uh"). An empty answer for real words
+// means the model misfired, and the words must not be lost.
+export function acceptCleaned(raw: string, cleaned: string): string {
+  return cleaned || !fastCleanup(raw) ? cleaned : raw;
+}
+
 // Falls back to the raw transcript on any failure: a dictation is never lost to cleanup.
 export async function cleanupDictation(
   raw: string,
@@ -49,8 +55,8 @@ export async function cleanupDictation(
     const cleaned = (body.choices?.[0]?.message?.content ?? "")
       .replace(/<\/?transcript>/g, "")
       .trim();
-    // The prompt answers nothing for filler-only speech ("um, uh"); there is nothing to deliver.
-    return done(cleaned, "model");
+    const accepted = acceptCleaned(text, cleaned);
+    return done(accepted, accepted === cleaned ? "model" : "raw");
   } catch {
     return done(text, "raw");
   }
