@@ -12,10 +12,11 @@ export function voiceOrbPage(
 </head><body><canvas id="orb"></canvas><script>
 var LIVE={a:[.025,.137,.448],b:[.204,.42,.945],c:[.616,.742,.999],glow:1};
 var BUSY={a:[.02,.1,.34],b:[.17,.35,.82],c:[.52,.64,.95],glow:.75};
-var PAL={dictating:LIVE,speaking:LIVE,processing:BUSY,thinking:BUSY};
-var state=${JSON.stringify(state)},micLevel=0;
-window.setOrb=function(next){state=next};
-window.setOrbLevel=function(next){micLevel=next};
+var VOICE={a:[.23,.059,.406],b:[.588,.342,.91],c:[.832,.737,1],glow:1};
+var PAL={dictating:LIVE,speaking:VOICE,processing:BUSY,thinking:BUSY};
+var state=${JSON.stringify(state)},micLevel=0,fed=false;
+window.setOrb=function(next){state=next;fed=false};
+window.setOrbLevel=function(next){micLevel=next;fed=true};
 function Spring(v,k,d){this.x=v;this.v=0;this.t=v;this.k=k;this.d=d}
 Spring.prototype.step=function(dt){var n=Math.max(1,Math.ceil(dt/.004)),h=dt/n;for(var i=0;i<n;i++){this.v+=(-this.k*(this.x-this.t)-this.d*this.v)*h;this.x+=this.v*h}return this.x};
 var spr=function(v,k,d){return [new Spring(v[0],k,d),new Spring(v[1],k,d),new Spring(v[2],k,d)]};
@@ -38,7 +39,7 @@ var step3=function(s,t,dt){return s.map(function(x,i){x.t=t[i];return x.step(dt)
 function frame(now){
   var dt=Math.min(.05,(now-lastT)/1000);lastT=now;
   var p=PAL[state],talking=state==="dictating"||state==="speaking",busy=state==="processing";
-  var target=state==="dictating"?micLevel:state==="speaking"?.3+.45*Math.abs(Math.sin(now/95))*(.5+.5*Math.sin(now/700)):0;
+  var target=state==="dictating"||(state==="speaking"&&fed)?micLevel:state==="speaking"?.3+.45*Math.abs(Math.sin(now/95))*(.5+.5*Math.sin(now/700)):0;
   audio+=(target-audio)*(1-Math.exp(-dt*(target>audio?20:6)));
   sLevel.t=audio;sGlow.t=p.glow;sBusy.t=busy?1:0;sAppear.t=1;
   sScale.t=(1+.018*Math.sin(now/1700)+.006*Math.sin(now/730))*(1+.3*sLevel.x);
@@ -52,7 +53,7 @@ function frame(now){
   gl.uniform2f(U("uRes"),w,h);gl.uniform2f(U("uCenter"),w/2,h/2);
   gl.uniform1f(U("uR"),Math.min(w,h)*.27*scale*(.35+.65*Math.max(0,appear)));
   gl.uniform1f(U("uAppear"),Math.max(0,Math.min(1,appear)));gl.uniform1f(U("uTime"),now/1000);
-  gl.uniform1f(U("uThinking"),state==="thinking"?1:0);gl.uniform1f(U("uRipple"),0);gl.uniform1f(U("uTap"),0);gl.uniform1f(U("uPress"),0);
+  gl.uniform1f(U("uThinking"),state==="thinking"?1:0);gl.uniform1f(U("uSpeak"),state==="speaking"?1:0);gl.uniform1f(U("uRipple"),0);gl.uniform1f(U("uTap"),0);gl.uniform1f(U("uPress"),0);
   gl.uniform2f(U("uTapWave"),0,0);gl.uniform1f(U("uApproval"),0);gl.uniform1f(U("uContrast"),0);
   gl.uniform3f(U("uThread"),.3,.4,.5);gl.uniform1f(U("uLevel"),lvl);gl.uniform4f(U("uBands"),quad[0],quad[1],quad[2],quad[3]);
   gl.uniform1f(U("uFlow"),flow);gl.uniform1f(U("uGlow"),sGlow.step(dt));

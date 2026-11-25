@@ -8,12 +8,22 @@ import {
   disposeAudioPlayer,
   releaseAudioSession,
 } from "../../lib/audioSession";
+import { ENVELOPE_STEP_SECONDS, speechEnvelope } from "./speechEnvelope";
 
-const WAV_BYTES_PER_SECOND = 48_000;
+const WAV_SAMPLE_RATE = 24_000;
+const WAV_BYTES_PER_SECOND = WAV_SAMPLE_RATE * 2;
 const PLAYBACK_GRACE_MS = 3_000;
 
 let stopCurrent: (() => void) | undefined;
 let nextFile = 1;
+let speaking: { readonly startedAt: number; readonly levels: Float32Array } | undefined;
+
+/** How loud Maeve is right now, 0..1, or null when no host reply is playing. */
+export function replySpeechLevel(): number | null {
+  if (!speaking) return null;
+  const step = Math.floor((performance.now() - speaking.startedAt) / 1000 / ENVELOPE_STEP_SECONDS);
+  return speaking.levels[step] ?? 0;
+}
 
 /** Plays one base64 WAV to its end, or until `stopReplyAudio`. */
 export async function playReplyAudio(wavBase64: string): Promise<void> {
@@ -32,6 +42,7 @@ export async function playReplyAudio(wavBase64: string): Promise<void> {
         clearTimeout(watchdog);
         subscription.remove();
         stopCurrent = undefined;
+        speaking = undefined;
         resolve();
       };
       const subscription = player.addListener("playbackStatusUpdate", (status) => {
@@ -39,6 +50,10 @@ export async function playReplyAudio(wavBase64: string): Promise<void> {
       });
       stopCurrent = finish;
       player.play();
+      speaking = {
+        startedAt: performance.now(),
+        levels: speechEnvelope(wavBase64, WAV_SAMPLE_RATE),
+      };
     });
   } finally {
     disposeAudioPlayer(player);
