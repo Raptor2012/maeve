@@ -64,17 +64,6 @@
       body.docked #orbWave {
         display: none;
       }
-      #parts {
-        position: absolute;
-        inset: 0;
-        width: 180px;
-        height: 150px;
-        pointer-events: none;
-        mix-blend-mode: screen;
-      }
-      body.bar #parts {
-        display: none;
-      }
       #cap {
         position: absolute;
         left: 0;
@@ -1023,7 +1012,6 @@
       </div>
       <div id="orbwrap">
         <canvas id="orb" aria-label="Open settings"></canvas>
-        <canvas id="parts" aria-hidden="true"></canvas>
         <div class="ctl" id="muteMic" title="Mute my microphone">
           <svg viewBox="0 0 24 24">
             <rect x="9" y="3" width="6" height="11" rx="3" />
@@ -1096,8 +1084,7 @@
       uniform float uAppear;  // 0..1 pop-in
       uniform vec4 uBands;    // smoothed voice energy: low, low-mid, high-mid, high
       uniform float uFlow;    // time that runs faster while someone speaks (never jumps)
-      uniform float uParticles; // 0..1 particle presence
-      uniform float uThinking, uRipple, uApproval, uIdle, uContrast;
+      uniform float uThinking, uRipple, uApproval, uContrast;
       uniform vec3 uThread;
       uniform float uTap;     // signed tap envelope: + opening settings, - closing
       uniform float uPress;   // 0..1 while the orb is held down
@@ -1109,93 +1096,73 @@
                        mix(dot(hash3(i+vec3(0,1,0)),f-vec3(0,1,0)), dot(hash3(i+vec3(1,1,0)),f-vec3(1,1,0)),u.x),u.y),
                    mix(mix(dot(hash3(i+vec3(0,0,1)),f-vec3(0,0,1)), dot(hash3(i+vec3(1,0,1)),f-vec3(1,0,1)),u.x),
                        mix(dot(hash3(i+vec3(0,1,1)),f-vec3(0,1,1)), dot(hash3(i+vec3(1,1,1)),f-vec3(1,1,1)),u.x),u.y),u.z); }
-      float fbm(vec3 p){ float v = 0.0, a = 0.5; for (int i=0;i<4;i++){ v += a*noise(p); p = p*2.03 + 7.1; a *= 0.5; } return v; }
+
+      float flow2(vec3 p){ return 0.65*noise(p) + 0.35*noise(p*2.03 + 7.1); }
+      mat2 rot(float a){ return mat2(cos(a),-sin(a),sin(a),cos(a)); }
 
       void main(){
         vec2 px = gl_FragCoord.xy;
         vec2 d = (px - uCenter) / uR;
-        float t = uTime;
-        float ang = atan(d.y, d.x);
-        // fluid silhouette: low-frequency wobble that grows with level
         float fl = uFlow;
-        // fluid silhouette: two slow noise octaves; voice makes it breathe and flow, never form shapes
+        float ang = atan(d.y, d.x);
+        // A perfect circle at rest; voice and taps make the silhouette breathe.
         float edgeNoise = noise(vec3(cos(ang)*0.9, sin(ang)*0.9, fl*0.38)) * 0.65
                         + noise(vec3(cos(ang)*1.8 + 3.1, sin(ang)*1.8, fl*0.55)) * 0.35;
-        float wob = 1.0 + (0.014 + 0.12*uLevel + 0.06*uBands.x + 0.10*abs(uTap)) * edgeNoise;   // a tap makes the surface ripple like jelly
+        float wob = 1.0 + (0.06*uLevel + 0.03*uBands.x + 0.08*abs(uTap)) * edgeNoise;
         float r = length(d) / wob;
+        float aa = 1.25 / uR;   // anti-aliasing width: about 1.25 device pixels, in orb radii
         vec4 col = vec4(0.0);
 
-        // voice bloom: absent at rest (keeps the deep-space look), glows outward while someone speaks
-        float bloom = exp(-max(0.0, r - 1.0) * (5.0 - 1.6*uLevel)) * smoothstep(0.98, 1.04, r);
-        float bloomAlpha = bloom * (0.32*uLevel + 0.22*uThinking);
-        col += vec4(mix(uB, uC, 0.4) * bloomAlpha, bloomAlpha);
+        // Halo hugs the rim with no gap, so the edge never shows a dark seam.
+        float halo = exp(-max(0.0, r - 1.0) * (7.0 - 2.5*uLevel));
+        float haloAlpha = halo * (0.08*uGlow + 0.30*uLevel + 0.16*uThinking + 0.12*abs(uTap));
+        col += vec4(uB * haloAlpha, haloAlpha);
 
-        // busy ring
         if (uBusy > 0.001) {
           float a = mod(uSpin - ang, 6.2831853);
-          float seg = exp(-a*2.8) * (1.0-smoothstep(1.6,2.2,a));
-          float dotted = 0.6 + 0.4*pow(0.5+0.5*cos(a*48.0),4.0);
-          float ring = 1.0-smoothstep(0.01,0.035,abs(r-1.23));
-          float ringAlpha = 0.85 * ring * seg * dotted * uBusy;
-          col += vec4(uC * ringAlpha, ringAlpha);
+          float seg = exp(-a*2.2) * (1.0 - smoothstep(1.4, 2.2, a));
+          float ring = 1.0 - smoothstep(0.022 - aa, 0.022 + aa, abs(r - 1.22));
+          float ringAlpha = 0.9 * ring * seg * uBusy;
+          col = vec4(uC * ringAlpha, ringAlpha) + col * (1.0 - ringAlpha);
         }
-
         if (uRipple > 0.0) {
-          float wave = 1.0-smoothstep(0.008,0.045,abs(r-(1.0+(1.0-uRipple)*0.95)));
-          float alpha = wave*uRipple*0.48;
-          col += vec4(uC*alpha,alpha);
+          float wave = 1.0 - smoothstep(0.012, 0.012 + 2.0*aa, abs(r - (1.0 + (1.0 - uRipple)*0.95)));
+          float alpha = wave*uRipple*0.45;
+          col += vec4(uC*alpha, alpha);
         }
         if (uApproval > 0.0) {
-          float edge = exp(-abs(r-1.04)*34.0)*uApproval;
-          col += vec4(vec3(1.0,0.63,0.19)*edge,edge);
+          float edge = exp(-abs(r - 1.05)*30.0)*uApproval;
+          col += vec4(vec3(0.97,0.637,0.142)*edge, edge);
         }
-        // Tap: a soft, wobbling wave flows outward when settings open and inward when they close.
         if (uTapWave.y > 0.0) {
-          float tw = exp(-pow((r-uTapWave.x)/0.075, 2.0)) * smoothstep(0.96, 1.03, r);
+          float tw = exp(-pow((r - uTapWave.x)/0.075, 2.0)) * smoothstep(1.0, 1.0 + 2.0*aa, r);
           float alpha = tw*uTapWave.y;
-          col += vec4(mix(uB, uC, 0.55)*alpha, alpha);
+          col += vec4(mix(uB, uC, 0.5)*alpha, alpha);
         }
 
-        // sphere: deep-space nebula with a dark core and a glowing rim (black-hole feel)
-        if (r < 1.0) {
-          float z = sqrt(max(0.0, 1.0 - r*r));
-          vec3 n = normalize(vec3(d.x/wob, d.y/wob, z));
-          vec3 sp = vec3(n.xy*1.2, z*0.6);
-          // Thinking uses the same continuous fluid field as speech, with a gentle inward twist.
-          float turn = uThinking*(fl*0.16 + r*0.65) + uIdle*0.08*sin(fl*0.28)
-                     + uTap*(1.0-r)*(1.0-r)*2.4;                                        // a tap stirs the core, then it unwinds
-          sp.xy = mat2(cos(turn),-sin(turn),sin(turn),cos(turn))*sp.xy;
-          sp.xy *= 1.0 + uThinking*0.06*sin(fl*0.38-r*2.0) + uIdle*0.025*sin(fl*0.45-r*1.4);
-          vec3 warp = vec3(fbm(sp*0.9 + vec3(0.0, fl*0.16, fl*0.10)), fbm(sp*0.9 + vec3(5.2, -fl*0.12, fl*0.08)), 0.0);
-          float f1 = fbm(sp*1.3 + warp*1.6 + vec3(fl*0.10, -fl*0.07, fl*0.12 + 0.25*uLevel));
-          float f2 = fbm(sp*2.0 - warp*1.2 + vec3(-fl*0.16, fl*0.09, 3.0));
-          float band = smoothstep(-0.35, 0.45, f1 + 0.30*f2);
-          vec3 body = mix(uA * 0.22, uB * 0.62, band);                                   // dark nebula base
-          body += mix(uB, uC, 0.5) * smoothstep(0.30, 0.80, f2 + 0.45*uLevel) * (0.2 + 0.5*uLevel);  // filaments flare with voice, coloured not white
-          float core = smoothstep(0.0, 0.9, r);                                          // the centre falls into shadow
-          body *= mix(min(1.0,0.25 + 0.75*uLevel + 0.55*uThinking + 0.13*uIdle + 0.35*abs(uTap) + 0.22*uPress), 1.0, core);                                    // the core lights up as you speak
-          vec3 L = normalize(vec3(-0.55, 0.75, 0.6));
-          float fres = pow(1.0 - max(0.0, n.z), 2.2);
-          vec3 H = normalize(L + vec3(0.0, 0.0, 1.0));
-          float spec = pow(max(0.0, dot(n, H)), 220.0) * 0.28;
-          float h = 0.5 + 0.5*n.y;                                                       // 0 = bottom, 1 = top
+        // Sphere: a smooth primary-blue body lit from the upper left, a slow liquid sheen and a crisp rim.
+        float cover = 1.0 - smoothstep(1.0 - aa, 1.0, r);
+        if (cover > 0.0) {
+          float rr = min(r, 1.0);
+          vec3 n = normalize(vec3(d/wob, sqrt(max(0.0, 1.0 - rr*rr))));
+          vec3 L = normalize(vec3(-0.45, 0.7, 0.55));
+          float diff = 0.5 + 0.5*dot(n, L);
+          float turn = uThinking*(fl*0.16 + rr*0.65) + uTap*(1.0 - rr)*(1.0 - rr)*2.4;
+          vec3 sp = vec3(rot(turn)*(n.xy*1.1), fl*0.12);
+          float sheen = smoothstep(-0.3, 0.45, flow2(sp + vec3(0.0, fl*0.10, 0.0)));
+          vec3 body = mix(uA, uB, clamp(0.3 + 0.6*diff + 0.12*(sheen - 0.5), 0.0, 1.0));
+          body = mix(body, mix(uB, uC, 0.45), (0.38*uLevel + 0.22*uThinking + 0.18*abs(uTap) + 0.12*uPress) * (1.0 - rr*rr) * (0.7 + 0.3*sheen));
+          float h = 0.5 + 0.5*n.y;
           vec4 zone = vec4(1.0 - smoothstep(0.0, 0.4, h), exp(-pow((h-0.38)/0.2, 2.0)), exp(-pow((h-0.66)/0.2, 2.0)), smoothstep(0.65, 1.0, h));
-          float rimBand = dot(zone, uBands);                                             // spectrum mapped around the rim
-          vec3 c = body + mix(uB, uC, 0.4) * fres * (0.65 + 0.45*uLevel + 1.1*rimBand + 0.55*abs(uTap) + 0.25*uPress) + mix(vec3(1.0), uC, 0.6) * spec;
-          // A stable thread rim is independent of functional state colour.
-          c += uThread * pow(r,18.0) * (0.23 + 0.25*uContrast);
-          c += mix(uB,uC,0.25)*uThinking*(0.12+0.07*band);
-          // Sparse stars stay inside the dark core; reduced motion freezes their time.
-          vec2 grid = floor(d*28.0);
-          vec2 star = fract(hash3(vec3(grid,7.0)).xy*17.0)*0.7+0.15;
-          float point = 1.0-smoothstep(0.025,0.10,length(fract(d*28.0)-star));
-          float sparse = step(0.94,fract(sin(dot(grid,vec2(127.1,311.7)))*43758.54));
-          c += mix(uC,vec3(1.0),0.35)*point*sparse*(1.0-smoothstep(0.65,0.85,r))*(0.10+0.08*sin(t*0.6+grid.x))*uIdle;
-          c += uC*pow(r,12.0)*uContrast*0.35;
-          float desat = dot(c, vec3(0.299,0.587,0.114));
-          c = mix(c, vec3(desat)*0.9, uOff*0.75);
-          float edge = 1.0 - smoothstep(0.985, 1.0, r);
-          col = mix(col, vec4(c, 1.0), edge);
+          float rimBand = dot(zone, uBands);
+          float fres = pow(1.0 - n.z, 3.0);
+          body += mix(uB, uC, 0.6) * fres * (0.5 + 0.45*uLevel + 0.8*rimBand + 0.4*abs(uTap));
+          body += uC * pow(max(0.0, dot(n, normalize(L + vec3(0.0, 0.0, 1.0)))), 28.0) * 0.1;
+          body += uThread * pow(rr, 18.0) * (0.18 + 0.25*uContrast);
+          body += uC * pow(rr, 12.0) * uContrast * 0.35;
+          float grey = dot(body, vec3(0.299, 0.587, 0.114));
+          body = mix(body, vec3(grey)*0.9, uOff*0.75);
+          col = vec4(body * cover, cover) + col * (1.0 - cover);
         }
         float a = clamp(uAppear, 0.0, 1.0);
         float alpha = clamp(col.a, 0.0, 1.0);
@@ -1207,47 +1174,87 @@
     </script>
 
     <script>
-      // T3 Code's blue for everything live, its neutrals when idle; amber and red keep their meaning.
+      // T3 Code's primary blue for everything live, its zinc neutrals when idle; amber and red keep their meaning.
       const PAL = {
-        thinking: { a: [0.05, 0.1, 0.36], b: [0.24, 0.36, 0.86], c: [0.72, 0.8, 1.0], glow: 0.8 },
-        approval: { a: [0.3, 0.16, 0.03], b: [0.9, 0.52, 0.12], c: [1.0, 0.79, 0.37], glow: 0.85 },
-        input: { a: [0.05, 0.1, 0.36], b: [0.24, 0.36, 0.86], c: [0.72, 0.8, 1.0], glow: 0.65 },
+        thinking: { a: [0.02, 0.1, 0.34], b: [0.17, 0.35, 0.82], c: [0.52, 0.64, 0.95], glow: 0.8 },
+        approval: {
+          a: [0.36, 0.2, 0.03],
+          b: [0.97, 0.637, 0.142],
+          c: [1.0, 0.82, 0.5],
+          glow: 0.85,
+        },
+        input: { a: [0.02, 0.1, 0.34], b: [0.17, 0.35, 0.82], c: [0.52, 0.64, 0.95], glow: 0.65 },
         loading: {
-          a: [0.14, 0.14, 0.15],
-          b: [0.34, 0.34, 0.36],
-          c: [0.64, 0.64, 0.66],
+          a: [0.09, 0.09, 0.11],
+          b: [0.32, 0.32, 0.36],
+          c: [0.63, 0.63, 0.67],
           glow: 0.25,
         },
-        off: { a: [0.14, 0.14, 0.15], b: [0.34, 0.34, 0.36], c: [0.64, 0.64, 0.66], glow: 0.2 },
-        ready: { a: [0.06, 0.12, 0.42], b: [0.29, 0.43, 0.97], c: [0.82, 0.88, 1.0], glow: 0.55 },
-        hearing: { a: [0.09, 0.18, 0.58], b: [0.4, 0.56, 1.0], c: [0.94, 0.96, 1.0], glow: 0.95 },
+        off: { a: [0.09, 0.09, 0.11], b: [0.32, 0.32, 0.36], c: [0.63, 0.63, 0.67], glow: 0.2 },
+        ready: {
+          a: [0.025, 0.137, 0.448],
+          b: [0.204, 0.42, 0.945],
+          c: [0.616, 0.742, 0.999],
+          glow: 0.55,
+        },
+        hearing: {
+          a: [0.025, 0.137, 0.448],
+          b: [0.204, 0.42, 0.945],
+          c: [0.616, 0.742, 0.999],
+          glow: 0.95,
+        },
         transcribing: {
-          a: [0.05, 0.1, 0.36],
-          b: [0.24, 0.36, 0.86],
-          c: [0.72, 0.8, 1.0],
+          a: [0.02, 0.1, 0.34],
+          b: [0.17, 0.35, 0.82],
+          c: [0.52, 0.64, 0.95],
           glow: 0.75,
         },
-        sending: { a: [0.05, 0.1, 0.36], b: [0.24, 0.36, 0.86], c: [0.72, 0.8, 1.0], glow: 0.75 },
-        waiting: { a: [0.05, 0.1, 0.36], b: [0.24, 0.36, 0.86], c: [0.72, 0.8, 1.0], glow: 0.6 },
-        speaking: { a: [0.09, 0.18, 0.58], b: [0.4, 0.56, 1.0], c: [0.94, 0.96, 1.0], glow: 1.0 },
-        reading: { a: [0.06, 0.12, 0.42], b: [0.29, 0.43, 0.97], c: [0.82, 0.88, 1.0], glow: 0.6 },
-        stopped: { a: [0.14, 0.14, 0.15], b: [0.34, 0.34, 0.36], c: [0.64, 0.64, 0.66], glow: 0.3 },
-        dictating: { a: [0.09, 0.18, 0.58], b: [0.4, 0.56, 1.0], c: [0.94, 0.96, 1.0], glow: 0.95 },
+        sending: { a: [0.02, 0.1, 0.34], b: [0.17, 0.35, 0.82], c: [0.52, 0.64, 0.95], glow: 0.75 },
+        waiting: { a: [0.02, 0.1, 0.34], b: [0.17, 0.35, 0.82], c: [0.52, 0.64, 0.95], glow: 0.6 },
+        speaking: {
+          a: [0.025, 0.137, 0.448],
+          b: [0.204, 0.42, 0.945],
+          c: [0.616, 0.742, 0.999],
+          glow: 1.0,
+        },
+        reading: {
+          a: [0.025, 0.137, 0.448],
+          b: [0.204, 0.42, 0.945],
+          c: [0.616, 0.742, 0.999],
+          glow: 0.6,
+        },
+        stopped: { a: [0.09, 0.09, 0.11], b: [0.32, 0.32, 0.36], c: [0.63, 0.63, 0.67], glow: 0.3 },
+        dictating: {
+          a: [0.025, 0.137, 0.448],
+          b: [0.204, 0.42, 0.945],
+          c: [0.616, 0.742, 0.999],
+          glow: 0.95,
+        },
         processing: {
-          a: [0.05, 0.1, 0.36],
-          b: [0.24, 0.36, 0.86],
-          c: [0.72, 0.8, 1.0],
+          a: [0.02, 0.1, 0.34],
+          b: [0.17, 0.35, 0.82],
+          c: [0.52, 0.64, 0.95],
           glow: 0.75,
         },
         reviewing: {
-          a: [0.06, 0.12, 0.42],
-          b: [0.29, 0.43, 0.97],
-          c: [0.82, 0.88, 1.0],
+          a: [0.025, 0.137, 0.448],
+          b: [0.204, 0.42, 0.945],
+          c: [0.616, 0.742, 0.999],
           glow: 0.6,
         },
-        done: { a: [0.06, 0.12, 0.42], b: [0.29, 0.43, 0.97], c: [0.82, 0.88, 1.0], glow: 0.9 },
-        failed: { a: [0.4, 0.06, 0.08], b: [1.0, 0.3, 0.32], c: [1.0, 0.72, 0.7], glow: 0.9 },
-        error: { a: [0.4, 0.06, 0.08], b: [1.0, 0.3, 0.32], c: [1.0, 0.72, 0.7], glow: 0.9 },
+        done: {
+          a: [0.025, 0.137, 0.448],
+          b: [0.204, 0.42, 0.945],
+          c: [0.616, 0.742, 0.999],
+          glow: 0.9,
+        },
+        failed: {
+          a: [0.38, 0.05, 0.06],
+          b: [0.945, 0.265, 0.271],
+          c: [1.0, 0.66, 0.64],
+          glow: 0.9,
+        },
+        error: { a: [0.38, 0.05, 0.06], b: [0.945, 0.265, 0.271], c: [1.0, 0.66, 0.64], glow: 0.9 },
       };
       const LABEL = {
         thinking: "Thinking",
@@ -1311,7 +1318,7 @@
         CY = 84,
         R = 30,
         barMode = false;
-      const dpr = window.devicePixelRatio || 1;
+      let dpr = window.devicePixelRatio || 1;
       function layout(bar) {
         barMode = bar;
         document.body.classList.toggle("bar", bar);
@@ -1336,6 +1343,20 @@
         cv.style.height = H + "px";
       }
       layout(false);
+      // Re-render at the new density when the window changes monitor or scale, so nothing is upscaled.
+      function watchDensity() {
+        matchMedia(`(resolution: ${dpr}dppx)`).addEventListener(
+          "change",
+          () => {
+            dpr = window.devicePixelRatio || 1;
+            layout(barMode);
+            sizeWaves();
+            watchDensity();
+          },
+          { once: true },
+        );
+      }
+      watchDensity();
       const gl = cv.getContext("webgl", { alpha: true, premultipliedAlpha: true, antialias: true });
       function sh(type, src) {
         const s = gl.createShader(type);
@@ -1377,11 +1398,9 @@
         "uAppear",
         "uBands",
         "uFlow",
-        "uParticles",
         "uThinking",
         "uRipple",
         "uApproval",
-        "uIdle",
         "uContrast",
         "uThread",
         "uTap",
@@ -1417,7 +1436,6 @@
       let audioS = 0; // level smoothed between 20 Hz status polls
       let flow = 0;
       const quad = [0, 0, 0, 0];
-      const sPart = new Spring(0.15, 40, 12);
       function bandGroups(b) {
         if (!b) return [0, 0, 0, 0];
         const avg = (i, j) => {
@@ -1628,13 +1646,6 @@
               2.0 * sLevel.x +
               (busyNow ? 0.3 : 0) +
               2.2 * Math.abs(fx.tap));
-        sPart.t = talking
-          ? 0.55 + 0.45 * Math.min(1, sLevel.x * 1.5)
-          : busyNow
-            ? 0.4
-            : S.visible
-              ? 0.18
-              : 0;
         if (calm) {
           sScale.x = sScale.t = 1;
           sScale.v = 0;
@@ -1674,13 +1685,11 @@
           U.uApproval,
           fx.approval ? (calm ? 0.65 : 0.5 + 0.25 * Math.sin(fx.time * 2.6)) : 0,
         );
-        gl.uniform1f(U.uIdle, ["ready", "off", "stopped"].includes(state) ? 1 : 0);
         gl.uniform1f(U.uContrast, S.highContrast ? 1 : 0);
         gl.uniform3fv(U.uThread, threadAccent(S.thread));
         gl.uniform1f(U.uLevel, Math.max(0, lvl));
         gl.uniform4f(U.uBands, quad[0], quad[1], quad[2], quad[3]);
         gl.uniform1f(U.uFlow, calm ? 0 : flow);
-        gl.uniform1f(U.uParticles, Math.max(0, sPart.step(dt)));
         gl.uniform1f(U.uGlow, glow);
         gl.uniform1f(U.uBusy, calm || state === "thinking" ? 0 : b);
         gl.uniform1f(U.uSpin, calm ? 0 : spin);
@@ -1692,7 +1701,6 @@
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
         tickBubble(dt);
         drawWave(dt, C);
-        drawParticles(dt, B, C, appear);
         requestAnimationFrame(frame);
       }
       requestAnimationFrame(frame);
@@ -1700,12 +1708,15 @@
       // ---------- actual speech spectrum, shared by orb and toolbar ----------
       const wave = document.getElementById("wave"),
         wctx = wave.getContext("2d");
-      wave.width = 52 * dpr;
-      wave.height = 24 * dpr;
       const orbWave = document.getElementById("orbWave"),
         octx = orbWave.getContext("2d");
-      orbWave.width = 96 * dpr;
-      orbWave.height = 18 * dpr;
+      function sizeWaves() {
+        wave.width = 52 * dpr;
+        wave.height = 24 * dpr;
+        orbWave.width = 96 * dpr;
+        orbWave.height = 18 * dpr;
+      }
+      sizeWaves();
       const BARS = 11,
         SLOTS = 23,
         slotS = Array.from({ length: SLOTS }, () => new Spring(0, 260, 22));
@@ -1740,85 +1751,11 @@
           const h = Math.max(1.4 * dpr, v * Hc * 0.92);
           const x = i * gap + (gap - bw) / 2;
           const tint = barMode ? [0.4 + 0.34 * u, 0.88 - 0.27 * u, 0.98] : C;
-          ctx.fillStyle = `rgba(${tint.map((v) => Math.round(Math.min(1, v) * 255)).join(",")},${(S.highContrast ? 0.85 : 0.22 + 0.68 * Math.min(1, v * 1.4)) * (1 - 0.45 * freq)})`;
+          ctx.fillStyle = `rgba(${tint.map((v) => Math.round(Math.min(1, v) * 255)).join(",")},${(S.highContrast ? 0.85 : 0.9 * Math.min(1, v * 1.4)) * (1 - 0.45 * freq)})`;
           ctx.beginPath();
           ctx.roundRect(x, mid - h / 2, bw, h, bw / 2);
           ctx.fill();
         }
-      }
-
-      // ---------- particles: tiny motes flowing around the orb in a smooth swirling field ----------
-      const parts = document.getElementById("parts"),
-        pctx = parts.getContext("2d");
-      parts.width = 180 * dpr;
-      parts.height = 150 * dpr;
-      const MOTES = Array.from({ length: 46 }, (_, i) => ({
-        a: Math.random() * Math.PI * 2,
-        r: 1.15 + Math.random() * 0.8,
-        s: 0.25 + Math.random() * 0.45,
-        dir: Math.random() < 0.5 ? -1 : 1,
-        size: 0.35 + Math.random() * 0.75,
-        seed: Math.random() * 100,
-      }));
-      let partFade = 0;
-      function drawParticles(dt, B, C, appear) {
-        if (barMode || motionReduced()) {
-          pctx.clearRect(0, 0, parts.width, parts.height);
-          return;
-        }
-        const state = visualState(),
-          talking = ["hearing", "dictating"].includes(state) || playbackActive(),
-          thinking = state === "thinking";
-        partFade +=
-          ((S.visible ? (talking || thinking ? 1 : 0.55) : 0) - partFade) * (1 - Math.exp(-dt * 3));
-        pctx.clearRect(0, 0, parts.width, parts.height);
-        if (partFade < 0.01) return;
-        const cx = CX * dpr,
-          cy = CY * dpr,
-          R0 = R * dpr,
-          lvl = Math.max(0, sLevel.x),
-          t = performance.now() / 1000;
-        const speed = thinking ? 0.9 : 0.55 + 1.8 * lvl;
-        pctx.globalCompositeOperation = "lighter";
-        for (const m of MOTES) {
-          // swirl: angular drift plus a smooth radial wander from layered sines (a cheap curl-like flow)
-          m.a += dt * (thinking ? 1 : m.dir) * m.s * speed;
-          const life = (t * 0.11 + m.seed * 0.09) % 1;
-          const wander =
-            0.16 * Math.sin(t * 0.7 * m.s + m.seed) + 0.09 * Math.sin(t * 1.3 + m.seed * 1.7);
-          const radius = (thinking ? 1.1 + 0.9 * (1 - life) : m.r + wander + 0.25 * lvl) * R0;
-          const x = cx + Math.cos(m.a) * radius,
-            y = cy + Math.sin(m.a) * radius * 0.92;
-          const twinkle = 0.55 + 0.45 * Math.sin(t * 2.1 * m.s + m.seed);
-          const alpha =
-            partFade *
-            appear *
-            (thinking
-              ? (0.28 + 0.12 * twinkle) * Math.pow(Math.sin(Math.PI * life), 0.8)
-              : twinkle * (0.1 + 0.22 * lvl) * (1.25 - (m.r - 1.15)));
-          const col = m.seed % 1 > 0.5 ? C : B;
-          const rgb = col.map((v) => Math.round(Math.min(1, v) * 255)).join(",");
-          if (thinking) {
-            pctx.shadowColor = `rgba(${rgb},${alpha * 0.65})`;
-            pctx.shadowBlur = 3.5 * dpr;
-            pctx.strokeStyle = `rgba(${rgb},${alpha * 0.3})`;
-            pctx.lineWidth = 0.65 * dpr;
-            const tail = m.a - 0.1;
-            pctx.beginPath();
-            pctx.moveTo(
-              cx + Math.cos(tail) * (radius + 2 * dpr),
-              cy + Math.sin(tail) * (radius + 2 * dpr) * 0.92,
-            );
-            pctx.lineTo(x, y);
-            pctx.stroke();
-          }
-          pctx.fillStyle = `rgba(${rgb},${Math.max(0, alpha)})`;
-          pctx.beginPath();
-          pctx.arc(x, y, m.size * dpr * (thinking ? 1.35 : 1 + 0.4 * lvl), 0, Math.PI * 2);
-          pctx.fill();
-          pctx.shadowBlur = 0;
-        }
-        pctx.globalCompositeOperation = "source-over";
       }
 
       // ---------- bubble: typewriter reveal at speaking pace ----------
