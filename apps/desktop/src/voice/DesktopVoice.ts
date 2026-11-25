@@ -2,6 +2,9 @@
 
 import * as NodeFS from "node:fs";
 
+import type { DesktopVoiceSetupStatus } from "@t3tools/contracts";
+import * as Electron from "electron";
+
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -11,8 +14,10 @@ import * as Ref from "effect/Ref";
 import * as DesktopEnvironment from "../app/DesktopEnvironment.ts";
 import * as DesktopObservability from "../app/DesktopObservability.ts";
 import * as ElectronWindow from "../electron/ElectronWindow.ts";
+import * as IpcChannels from "../ipc/channels.ts";
 import { VoiceController } from "./VoiceController.ts";
 import { resolveVoiceEngineConfig, spawnableFile } from "./voiceModels.ts";
+import { VoiceSetup } from "./voiceSetup.ts";
 
 const { logInfo, logWarning } = DesktopObservability.makeComponentLogger("desktop-voice");
 
@@ -33,6 +38,24 @@ const make = Effect.gen(function* () {
   const runFork = Effect.runForkWith(context);
   const controllerRef = yield* Ref.make<VoiceController | undefined>(undefined);
   const path = environment.path;
+
+  // Offered only when the bundled speech helper is here and just the downloadable models are not.
+  let setup: VoiceSetup | undefined;
+  let setupIpcRegistered = false;
+  const sendSetupStatus = (status: DesktopVoiceSetupStatus | null) => {
+    const main = Option.getOrUndefined(runSync(electronWindow.main));
+    if (main && !main.isDestroyed())
+      main.webContents.send(IpcChannels.VOICE_SETUP_STATUS_CHANNEL, status);
+  };
+  const registerSetupIpc = () => {
+    if (setupIpcRegistered) return;
+    setupIpcRegistered = true;
+    Electron.ipcMain.handle(IpcChannels.VOICE_SETUP_GET_CHANNEL, () => setup?.current() ?? null);
+    Electron.ipcMain.on(IpcChannels.VOICE_SETUP_COMMAND_CHANNEL, (_event, action: unknown) => {
+      if (action === "start") void setup?.start();
+      else if (action === "cancel") setup?.cancel();
+    });
+  };
 
   const resource = (name: string) =>
     environment.resolveResourcePathCandidates(name).find((path) => NodeFS.existsSync(path));
@@ -56,8 +79,25 @@ const make = Effect.gen(function* () {
       speechBinary,
     });
     // Voice is opt-in: without its models there is no orb, hotkey or engine at all.
+    registerSetupIpc();
     if (!models.ok) {
       yield* logInfo("voice is off: models not installed", { missing: models.missing.join(", ") });
+      if (speechBinary && !setup) {
+        setup = new VoiceSetup({
+          modelsDirectory: path.join(voiceDirectory, "models"),
+          platform: environment.platform,
+          arch: environment.processArch,
+          onStatus: sendSetupStatus,
+          onInstalled: () => {
+            setup = undefined;
+            sendSetupStatus(null);
+            runFork(initialize);
+          },
+          log: (message, detail) =>
+            runFork(logInfo(message, detail ?? {}).pipe(Effect.withSpan("desktop.voice.setup"))),
+        });
+        sendSetupStatus(setup.current());
+      }
       return;
     }
     const controller = new VoiceController({

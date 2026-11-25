@@ -12203,5 +12203,19 @@
   "27d76249d09eb69f": "Granskningsguiden är klar",
   "faa3bb26abb39c93": "Granskningsguiden misslyckades",
   "b7df38b7d8792d78": "Öppna guiden",
-  "9e91e9a77b664e4e": "Kunde inte starta en granskningsguide"
+  "9e91e9a77b664e4e": "Kunde inte starta en granskningsguide",
+  "95465d95f496951c": "Laddar ner röstmodeller: {percent} %. Klicka för att avbryta.",
+  "51c59697d44bb05e": "Installerar röst…",
+  "7eeddbc19eaef47a": "Det gick inte att konfigurera rösten: {error} Klicka för att försöka igen.",
+  "505aede3f393ddf1": "Konfigurera röst",
+  "a984bf8aa20a1209": "Konfigurera lokal röst?",
+  "03939140c661b438": [
+    "Det här laddar ner cirka ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " GB modeller för taligenkänning, textrensning och röst från Hugging Face och GitHub. Därefter körs diktering och upplästa svar helt på den här datorn."
+  ]
 }

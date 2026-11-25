@@ -1130,6 +1130,14 @@ export interface DesktopVoiceReply {
 
 export type DesktopVoiceActivity = "" | "thinking" | "approval" | "input";
 
+/** Voice before its local models are installed: offered, downloading, unpacking, or failed. */
+export interface DesktopVoiceSetupStatus {
+  readonly phase: "missing" | "downloading" | "installing" | "failed";
+  readonly receivedBytes: number;
+  readonly totalBytes: number;
+  readonly error?: string;
+}
+
 export interface DesktopVoiceBridge {
   readonly reportThreads: (
     threads: readonly DesktopVoiceThread[],
@@ -1151,6 +1159,9 @@ export interface DesktopVoiceBridge {
   readonly reportUserMessage: (
     thread: Pick<DesktopVoiceThread, "environmentId" | "threadId">,
   ) => void;
+  /** Calls back with the setup status, or null once voice is installed or cannot be set up. */
+  readonly onSetup: (listener: (status: DesktopVoiceSetupStatus | null) => void) => () => void;
+  readonly setup: (action: "start" | "cancel") => void;
 }
 
 export interface DesktopBridge {

@@ -12205,5 +12205,19 @@
   "27d76249d09eb69f": "Review guide ready",
   "faa3bb26abb39c93": "Review guide failed",
   "b7df38b7d8792d78": "Open guide",
-  "9e91e9a77b664e4e": "Could not start a review guide"
+  "9e91e9a77b664e4e": "Could not start a review guide",
+  "95465d95f496951c": "Downloading voice models: {percent}%. Click to cancel.",
+  "51c59697d44bb05e": "Installing voice…",
+  "7eeddbc19eaef47a": "Voice setup failed: {error} Click to try again.",
+  "505aede3f393ddf1": "Set up voice",
+  "a984bf8aa20a1209": "Set up local voice?",
+  "03939140c661b438": [
+    "This downloads about ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " GB of speech recognition, cleanup and voice models from Hugging Face and GitHub. After that, dictation and spoken replies run entirely on this computer."
+  ]
 }

@@ -8,6 +8,7 @@ import type {
   DesktopPreviewTabState,
   DesktopSnapShotEvent,
   DesktopVoiceDelivery,
+  DesktopVoiceSetupStatus,
   DesktopVoiceState,
 } from "@t3tools/contracts";
 import { exposeClerkBridge } from "@clerk/electron/preload";
@@ -112,6 +113,17 @@ ipcRenderer.on(IpcChannels.VOICE_STATE_CHANNEL, (_event, state: DesktopVoiceStat
   voiceState = state;
   for (const listener of voiceStateListeners) listener(state);
 });
+
+let voiceSetupStatus: DesktopVoiceSetupStatus | null | undefined;
+const voiceSetupListeners = new Set<(status: DesktopVoiceSetupStatus | null) => void>();
+const setVoiceSetupStatus = (status: DesktopVoiceSetupStatus | null) => {
+  voiceSetupStatus = status;
+  for (const listener of voiceSetupListeners) listener(status);
+};
+ipcRenderer.on(
+  IpcChannels.VOICE_SETUP_STATUS_CHANNEL,
+  (_event, status: DesktopVoiceSetupStatus | null) => setVoiceSetupStatus(status),
+);
 
 contextBridge.exposeInMainWorld("desktopBridge", {
   getAppBranding: () => {
@@ -315,6 +327,21 @@ contextBridge.exposeInMainWorld("desktopBridge", {
     },
     command: (command) => ipcRenderer.send(IpcChannels.VOICE_COMMAND_CHANNEL, command),
     reportUserMessage: (thread) => ipcRenderer.send(IpcChannels.VOICE_USER_MESSAGE_CHANNEL, thread),
+    onSetup: (listener) => {
+      voiceSetupListeners.add(listener);
+      if (voiceSetupStatus !== undefined) listener(voiceSetupStatus);
+      else {
+        void ipcRenderer
+          .invoke(IpcChannels.VOICE_SETUP_GET_CHANNEL)
+          .then((status: DesktopVoiceSetupStatus | null) => {
+            if (voiceSetupStatus === undefined) setVoiceSetupStatus(status);
+          });
+      }
+      return () => {
+        voiceSetupListeners.delete(listener);
+      };
+    },
+    setup: (action) => ipcRenderer.send(IpcChannels.VOICE_SETUP_COMMAND_CHANNEL, action),
   },
   onSnapShotEvent: (listener) => {
     const wrappedListener = (_event: Electron.IpcRendererEvent, event: unknown) => {

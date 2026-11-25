@@ -12196,5 +12196,19 @@
   "27d76249d09eb69f": "Review-Leitfaden bereit",
   "faa3bb26abb39c93": "Review-Leitfaden fehlgeschlagen",
   "b7df38b7d8792d78": "Leitfaden öffnen",
-  "9e91e9a77b664e4e": "Review-Leitfaden konnte nicht gestartet werden"
+  "9e91e9a77b664e4e": "Review-Leitfaden konnte nicht gestartet werden",
+  "95465d95f496951c": "Sprachmodelle werden heruntergeladen: {percent} %. Zum Abbrechen klicken.",
+  "51c59697d44bb05e": "Sprache wird installiert…",
+  "7eeddbc19eaef47a": "Einrichtung der Sprache fehlgeschlagen: {error} Zum Wiederholen klicken.",
+  "505aede3f393ddf1": "Sprache einrichten",
+  "a984bf8aa20a1209": "Lokale Sprache einrichten?",
+  "03939140c661b438": [
+    "Dabei werden etwa ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " GB an Spracherkennungs-, Bereinigungs- und Stimmmodellen von Hugging Face und GitHub heruntergeladen. Danach laufen Diktat und gesprochene Antworten vollständig auf diesem Computer."
+  ]
 }

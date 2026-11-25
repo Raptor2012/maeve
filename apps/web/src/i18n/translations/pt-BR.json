@@ -12195,5 +12195,19 @@
   "27d76249d09eb69f": "Guia de revisão pronto",
   "faa3bb26abb39c93": "O guia de revisão falhou",
   "b7df38b7d8792d78": "Abrir guia",
-  "9e91e9a77b664e4e": "Não foi possível iniciar um guia de revisão"
+  "9e91e9a77b664e4e": "Não foi possível iniciar um guia de revisão",
+  "95465d95f496951c": "Baixando modelos de voz: {percent}%. Clique para cancelar.",
+  "51c59697d44bb05e": "Instalando a voz…",
+  "7eeddbc19eaef47a": "Falha ao configurar a voz: {error} Clique para tentar de novo.",
+  "505aede3f393ddf1": "Configurar voz",
+  "a984bf8aa20a1209": "Configurar a voz local?",
+  "03939140c661b438": [
+    "Isso baixa cerca de ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " GB de modelos de reconhecimento de fala, limpeza e voz do Hugging Face e do GitHub. Depois disso, o ditado e as respostas faladas funcionam inteiramente neste computador."
+  ]
 }

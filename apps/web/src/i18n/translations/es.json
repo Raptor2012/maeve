@@ -12191,5 +12191,19 @@
   "27d76249d09eb69f": "Guía de revisión lista",
   "faa3bb26abb39c93": "Falló la guía de revisión",
   "b7df38b7d8792d78": "Abrir guía",
-  "9e91e9a77b664e4e": "No se pudo iniciar una guía de revisión"
+  "9e91e9a77b664e4e": "No se pudo iniciar una guía de revisión",
+  "95465d95f496951c": "Descargando modelos de voz: {percent} %. Haz clic para cancelar.",
+  "51c59697d44bb05e": "Instalando la voz…",
+  "7eeddbc19eaef47a": "No se pudo configurar la voz: {error} Haz clic para reintentar.",
+  "505aede3f393ddf1": "Configurar la voz",
+  "a984bf8aa20a1209": "¿Configurar la voz local?",
+  "03939140c661b438": [
+    "Se descargarán unos ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " GB de modelos de reconocimiento de voz, limpieza y voz desde Hugging Face y GitHub. Después, el dictado y las respuestas habladas funcionan por completo en este equipo."
+  ]
 }
