@@ -122,6 +122,13 @@ edit("apps/mobile/app.config.ts", [
 // 4. Regenerate catalogs for the renamed text, then carry every translation over to its new key.
 if (!skipI18n) {
   for (const [app, { dir, locales }] of catalogs) {
+    // CI installs only what the desktop build needs; an app without dependencies is not built.
+    if (!NodeFS.existsSync(NodePath.join(root, app, "node_modules"))) {
+      console.log(
+        `brand: ${app} has no dependencies installed, so its catalogs are left as they are`,
+      );
+      continue;
+    }
     NodeChildProcess.execSync("vp run i18n:generate", {
       cwd: NodePath.join(root, app),
       stdio: "inherit",
