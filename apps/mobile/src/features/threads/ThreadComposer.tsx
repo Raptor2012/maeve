@@ -5,7 +5,7 @@ import { useAppearancePreferences } from "../settings/appearance/AppearancePrefe
 import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/shell";
 import { settlePromise, squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
 import { AsyncResult } from "effect/reactivity";
-import { useAtomSet, useAtomValue } from "@effect/atom-react";
+import { useAtomValue } from "@effect/atom-react";
 import { clampFileAttachmentUploadBytes } from "@t3tools/client-runtime/state/attachments";
 import { pastedTextDisposition, replaceTextSelection } from "@t3tools/client-runtime/text-paste";
 import {
@@ -129,7 +129,8 @@ import {
 } from "../voice-input/threadVoiceReplies";
 import { useHostDictation } from "../voice-input/useHostDictation";
 import { VoiceOrb } from "../voice-input/VoiceOrb";
-import { mobilePreferencesAtom, updateMobilePreferencesAtom } from "../../state/preferences";
+import { mobilePreferencesAtom, saveMobilePreferences } from "../../state/preferences";
+import { useAtomCommand } from "../../state/use-atom-command";
 import type { VoiceOrbState } from "../voice-input/voiceOrbPage";
 import { useVoiceInputController } from "../voice-input/useVoiceInputController";
 import { resolveVoiceComposerPresentation } from "../voice-input/voiceInputPresentation";
@@ -484,7 +485,7 @@ export const ThreadComposer = function ThreadComposer(props: ThreadComposerProps
     writeDraft: onChangeDraftMessage,
   });
   const preferences = useAtomValue(mobilePreferencesAtom);
-  const updatePreferences = useAtomSet(updateMobilePreferencesAtom);
+  const savePreferences = useAtomCommand(saveMobilePreferences);
   const readAloudKey = scopedThreadKey(props.environmentId, props.selectedThread.id);
   const readAloud =
     AsyncResult.isSuccess(preferences) &&
@@ -598,7 +599,7 @@ export const ThreadComposer = function ThreadComposer(props: ThreadComposerProps
   };
   const toggleReadAloud = () => {
     if (readAloud) stopSpokenReply();
-    updatePreferences({
+    void savePreferences({
       transform: (current) => {
         const threads = current.readAloudThreads ?? [];
         return {

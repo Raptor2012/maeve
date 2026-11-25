@@ -5327,5 +5327,9 @@
   "ad208e3e32c85029": "Ocultar todo",
   "3328503592789bed": "Zen",
   "856812e7e1fc445e": "Llamadas a herramientas en el chat",
-  "8d545d54c0a9e950": "Oculta los comandos, ediciones y búsquedas que ejecutan los agentes. Ocultar las correctas mantiene los fallos. Zen solo muestra las respuestas finales. Las aprobaciones, preguntas y errores siempre se muestran."
+  "8d545d54c0a9e950": "Oculta los comandos, ediciones y búsquedas que ejecutan los agentes. Ocultar las correctas mantiene los fallos. Zen solo muestra las respuestas finales. Las aprobaciones, preguntas y errores siempre se muestran.",
+  "2c75593496fdff5d": "Dejar de dictar",
+  "e3403752d00d96e7": "Dictar",
+  "2ba7719a628c9941": "Dejar de leer las respuestas en voz alta",
+  "55d02091ec0c1637": "Leer las respuestas en voz alta"
 }

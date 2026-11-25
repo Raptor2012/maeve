@@ -448,13 +448,14 @@ export function ComposerDictateAction(props: {
   readonly audioLevels: SharedValue<ReadonlyArray<number>>;
   readonly onPress: () => void;
 }) {
+  const gt = useGT();
   const { scale } = useAndroidControlSizing();
   if (!props.isAvailable) return null;
   const circleSize = Math.round((props.size === "large" ? 44 : 30) * scale);
   const iconSize = Math.round((props.size === "large" ? 20 : 16) * scale);
   return (
     <Pressable
-      accessibilityLabel={props.active ? "Stop dictating" : "Dictate"}
+      accessibilityLabel={props.active ? gt("Stop dictating") : gt("Dictate")}
       accessibilityRole="button"
       accessibilityState={{ busy: props.transcribing, disabled: props.disabled }}
       className="size-[44px] shrink-0 items-center justify-center active:opacity-70"
@@ -490,11 +491,12 @@ export function ComposerReadAloudToggle(props: {
   readonly on: boolean;
   readonly onPress: () => void;
 }) {
+  const gt = useGT();
   const { scale } = useAndroidControlSizing();
   const iconSize = Math.round((props.size === "large" ? 20 : 16) * scale);
   return (
     <Pressable
-      accessibilityLabel={props.on ? "Stop reading replies aloud" : "Read replies aloud"}
+      accessibilityLabel={props.on ? gt("Stop reading replies aloud") : gt("Read replies aloud")}
       accessibilityRole="switch"
       accessibilityState={{ checked: props.on }}
       className="size-[44px] shrink-0 items-center justify-center active:opacity-70"

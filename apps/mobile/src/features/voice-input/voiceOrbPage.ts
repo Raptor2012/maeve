@@ -5,6 +5,7 @@ export function voiceOrbPage(
   shaders: { readonly vertex: string; readonly fragment: string },
   state: VoiceOrbState,
 ): string {
+  // oxlint-disable-next-line t3code/no-untranslated-copy -- an HTML document for the orb's WebView, not copy
   return `<!doctype html>
 <html><head><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
 <style>html,body{margin:0;height:100%;background:transparent;overflow:hidden}canvas{position:fixed;inset:0;width:100%;height:100%}</style>
