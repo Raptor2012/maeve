@@ -126,7 +126,7 @@ jobs:
         shell: bash
         env:
           T3CODE_TELEMETRY_CHANNEL: dev
-          T3CODE_DESKTOP_UPDATE_REPOSITORY: ${{ github.repository }}
+          T3CODE_DESKTOP_UPDATE_REPOSITORY: ${{ vars.RELEASE_REPOSITORY || github.repository }}
         run: |
           vp run dist:desktop:artifact \
             --platform "${{ matrix.platform }}" \
@@ -159,6 +159,8 @@ jobs:
           name: desktop-${{ matrix.platform }}-${{ matrix.arch }}
           path: release-publish/*
           if-no-files-found: error
+          # Builds are published privately; keep the run's copy only as long as publishing needs it.
+          retention-days: 1
 
   release:
     name: Publish release
@@ -229,14 +231,17 @@ jobs:
       - name: Publish GitHub release
         shell: bash
         env:
-          GH_TOKEN: ${{ github.token }}
+          # RELEASE_REPOSITORY (a repository variable) sends builds to a private repository;
+          # RELEASE_TOKEN must be able to write releases there.
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || github.token }}
+          RELEASE_REPOSITORY: ${{ vars.RELEASE_REPOSITORY || github.repository }}
         run: |
           set -euo pipefail
           version="${VERSION#v}"
           tag="v$version"
           gh release create "$tag" release-assets/* \
-            --repo "$GITHUB_REPOSITORY" \
+            --repo "$RELEASE_REPOSITORY" \
             --verify-tag \
             --latest \
-            --title "T3 Code $version" \
-            --notes "T3 Code $version with built-in voice (fork of pingdotgg/t3code). macOS builds are not signed by Apple and are experimental."
+            --title "Maeve voice fork $version (unofficial)" \
+            --notes "Unofficial build based on the T3 Code source code, with built-in local voice. Not affiliated with, endorsed by or maintained by T3 Tools, Inc. macOS builds are not signed by Apple and are experimental."
