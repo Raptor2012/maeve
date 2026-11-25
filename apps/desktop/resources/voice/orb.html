@@ -1085,6 +1085,7 @@
       uniform vec4 uBands;    // smoothed voice energy: low, low-mid, high-mid, high
       uniform float uFlow;    // time that runs faster while someone speaks (never jumps)
       uniform float uThinking, uRipple, uApproval, uContrast;
+      uniform float uSpeak;   // 0..1 while Maeve is talking (you talking is 0)
       uniform vec3 uThread;
       uniform float uTap;     // signed tap envelope: + opening settings, - closing
       uniform float uPress;   // 0..1 while the orb is held down
@@ -1105,25 +1106,28 @@
         vec2 d = (px - uCenter) / uR;
         float fl = uFlow;
         float ang = atan(d.y, d.x);
-        // A perfect circle at rest; voice and taps make the silhouette breathe.
-        float edgeNoise = noise(vec3(cos(ang)*0.9, sin(ang)*0.9, fl*0.38)) * 0.65
-                        + noise(vec3(cos(ang)*1.8 + 3.1, sin(ang)*1.8, fl*0.55)) * 0.35;
-        float wob = 1.0 + (0.06*uLevel + 0.03*uBands.x + 0.08*abs(uTap)) * edgeNoise;
-        float r = length(d) / wob;
+        float r = length(d);
         float aa = 1.25 / uR;   // anti-aliasing width: about 1.25 device pixels, in orb radii
         vec4 col = vec4(0.0);
 
         // Halo hugs the rim with no gap, so the edge never shows a dark seam.
         float halo = exp(-max(0.0, r - 1.0) * (7.0 - 2.5*uLevel));
-        float haloAlpha = halo * (0.08*uGlow + 0.30*uLevel + 0.16*uThinking + 0.12*abs(uTap));
+        float haloAlpha = halo * (0.03*uGlow + (0.2 + 0.15*uSpeak)*uLevel + 0.1*uThinking + 0.1*abs(uTap));
         col += vec4(uB * haloAlpha, haloAlpha);
 
         if (uBusy > 0.001) {
           float a = mod(uSpin - ang, 6.2831853);
           float seg = exp(-a*2.2) * (1.0 - smoothstep(1.4, 2.2, a));
-          float ring = 1.0 - smoothstep(0.022 - aa, 0.022 + aa, abs(r - 1.22));
+          float ring = 1.0 - smoothstep(0.034 - aa, 0.034 + aa, abs(r - 1.2));
           float ringAlpha = 0.9 * ring * seg * uBusy;
           col = vec4(uC * ringAlpha, ringAlpha) + col * (1.0 - ringAlpha);
+        }
+        // Your voice: a ring that rides out with every word.
+        float voiceOn = smoothstep(0.02, 0.15, uLevel) * (1.0 - uSpeak);
+        if (voiceOn > 0.0) {
+          float ringR = 1.14 + 0.24*uLevel;
+          float vr = (1.0 - smoothstep(0.02, 0.02 + 2.0*aa, abs(r - ringR))) * voiceOn * 0.7;
+          col = vec4(uC*vr, vr) + col*(1.0 - vr);
         }
         if (uRipple > 0.0) {
           float wave = 1.0 - smoothstep(0.012, 0.012 + 2.0*aa, abs(r - (1.0 + (1.0 - uRipple)*0.95)));
@@ -1140,29 +1144,54 @@
           col += vec4(mix(uB, uC, 0.5)*alpha, alpha);
         }
 
-        // Sphere: a smooth primary-blue body lit from the upper left, a slow liquid sheen and a crisp rim.
+        // A flat, T3-style sphere with a restrained glass finish: soft inner flow, a faint top
+        // highlight and a hairline rim.
         float cover = 1.0 - smoothstep(1.0 - aa, 1.0, r);
         if (cover > 0.0) {
           float rr = min(r, 1.0);
-          vec3 n = normalize(vec3(d/wob, sqrt(max(0.0, 1.0 - rr*rr))));
-          vec3 L = normalize(vec3(-0.45, 0.7, 0.55));
-          float diff = 0.5 + 0.5*dot(n, L);
-          float turn = uThinking*(fl*0.16 + rr*0.65) + uTap*(1.0 - rr)*(1.0 - rr)*2.4;
-          vec3 sp = vec3(rot(turn)*(n.xy*1.1), fl*0.12);
-          float sheen = smoothstep(-0.3, 0.45, flow2(sp + vec3(0.0, fl*0.10, 0.0)));
-          vec3 body = mix(uA, uB, clamp(0.3 + 0.6*diff + 0.12*(sheen - 0.5), 0.0, 1.0));
-          body = mix(body, mix(uB, uC, 0.45), (0.38*uLevel + 0.22*uThinking + 0.18*abs(uTap) + 0.12*uPress) * (1.0 - rr*rr) * (0.7 + 0.3*sheen));
+          vec3 n = vec3(d, sqrt(max(0.0, 1.0 - rr*rr)));
+          float fres = pow(1.0 - n.z, 2.2);
           float h = 0.5 + 0.5*n.y;
+          float turn = uThinking*(fl*0.16 + rr*0.65) + uTap*(1.0 - rr)*(1.0 - rr)*2.4;
+          vec3 sp = vec3(rot(turn + fl*0.05)*(n.xy*1.25), fl*0.14);
+          float liquid = smoothstep(-0.35, 0.5, flow2(sp) + 0.25*flow2(sp*1.9 + 4.0));
+          float energy = clamp(0.35*uLevel + 0.25*uThinking + 0.2*abs(uTap) + 0.12*uPress, 0.0, 1.0);
+          vec3 liq = mix(uA, uB, 0.62 + 0.18*liquid + 0.25*(n.y*0.5));
+          liq = mix(liq, uC, (0.08 + 0.5*energy) * liquid * (1.0 - rr*rr));
+          liq = mix(liq, uC, uSpeak * uLevel * 0.6 * (1.0 - rr*rr));
+          float density = 0.9 + 0.1*energy;
+          vec3 rgb = liq * density;
+          float alpha = density;
+          // Glass shell: denser and lighter towards the edge.
+          rgb += mix(uB, uC, 0.5) * fres * (0.22 + 0.35*uLevel);
+          alpha = max(alpha, 0.9);
+          // Light passing through pools at the bottom inside the shell.
+          float pool = smoothstep(0.55, 1.0, rr) * (1.0 - smoothstep(0.0, 0.45, h));
+          rgb += uC * pool * 0.12;
+          // Spectrum on the rim while someone talks.
           vec4 zone = vec4(1.0 - smoothstep(0.0, 0.4, h), exp(-pow((h-0.38)/0.2, 2.0)), exp(-pow((h-0.66)/0.2, 2.0)), smoothstep(0.65, 1.0, h));
-          float rimBand = dot(zone, uBands);
-          float fres = pow(1.0 - n.z, 3.0);
-          body += mix(uB, uC, 0.6) * fres * (0.5 + 0.45*uLevel + 0.8*rimBand + 0.4*abs(uTap));
-          body += uC * pow(max(0.0, dot(n, normalize(L + vec3(0.0, 0.0, 1.0)))), 28.0) * 0.1;
-          body += uThread * pow(rr, 18.0) * (0.18 + 0.25*uContrast);
-          body += uC * pow(rr, 12.0) * uContrast * 0.35;
-          float grey = dot(body, vec3(0.299, 0.587, 0.114));
-          body = mix(body, vec3(grey)*0.9, uOff*0.75);
-          col = vec4(body * cover, cover) + col * (1.0 - cover);
+          rgb += mix(uB, uC, 0.6) * fres * 0.8 * dot(zone, uBands);
+          // Thinking: a bright band sweeps round the rim.
+          float sweep = pow(0.5 + 0.5*cos(atan(n.y, n.x) - uSpin*2.4), 10.0);
+          rgb += uC * sweep * (0.15 + 0.85*fres) * uThinking;
+          // Reflection streak, upper left: a soft elongated highlight on the glass.
+          vec2 q = rot(-0.6) * (d - vec2(-0.32, 0.44));
+          float streak = 1.0 - smoothstep(0.0, 1.0, length(q / vec2(0.5, 0.22)));
+          streak *= streak;
+          // Crisp rim light along the top edge, and a hairline all round.
+          float rimLight = smoothstep(0.86, 0.985, rr) * pow(max(0.0, dot(normalize(d + 1e-5), normalize(vec2(-0.45, 0.9)))), 3.0);
+          float hairline = 1.0 - smoothstep(0.0, 2.0*aa, 1.0 - rr);
+          float spec = 0.14*streak + 0.3*rimLight + 0.22*hairline;
+          rgb += mix(vec3(1.0), uC, 0.25) * spec;
+          alpha = max(alpha, spec);
+          rgb += uThread * pow(rr, 18.0) * (0.18 + 0.25*uContrast);
+          rgb += uC * pow(rr, 12.0) * uContrast * 0.35;
+          float grey = dot(rgb, vec3(0.299, 0.587, 0.114));
+          rgb = mix(rgb, vec3(grey)*0.9, uOff*0.75);
+          // Light is emissive: a highlight raises opacity instead of being clipped, so hues never shift.
+          alpha = clamp(max(alpha, max(rgb.r, max(rgb.g, rgb.b))), 0.0, 1.0);
+          vec4 glass = vec4(rgb, alpha) * cover;
+          col = glass + col * (1.0 - glass.a);
         }
         float a = clamp(uAppear, 0.0, 1.0);
         float alpha = clamp(col.a, 0.0, 1.0);
@@ -1191,12 +1220,7 @@
           glow: 0.25,
         },
         off: { a: [0.09, 0.09, 0.11], b: [0.32, 0.32, 0.36], c: [0.63, 0.63, 0.67], glow: 0.2 },
-        ready: {
-          a: [0.025, 0.137, 0.448],
-          b: [0.204, 0.42, 0.945],
-          c: [0.616, 0.742, 0.999],
-          glow: 0.55,
-        },
+        ready: { a: [0.09, 0.09, 0.11], b: [0.3, 0.31, 0.36], c: [0.45, 0.6, 1.0], glow: 0.15 },
         hearing: {
           a: [0.025, 0.137, 0.448],
           b: [0.204, 0.42, 0.945],
@@ -1212,15 +1236,15 @@
         sending: { a: [0.02, 0.1, 0.34], b: [0.17, 0.35, 0.82], c: [0.52, 0.64, 0.95], glow: 0.75 },
         waiting: { a: [0.02, 0.1, 0.34], b: [0.17, 0.35, 0.82], c: [0.52, 0.64, 0.95], glow: 0.6 },
         speaking: {
-          a: [0.025, 0.137, 0.448],
-          b: [0.204, 0.42, 0.945],
-          c: [0.616, 0.742, 0.999],
+          a: [0.23, 0.059, 0.406],
+          b: [0.588, 0.342, 0.91],
+          c: [0.832, 0.737, 1.0],
           glow: 1.0,
         },
         reading: {
-          a: [0.025, 0.137, 0.448],
-          b: [0.204, 0.42, 0.945],
-          c: [0.616, 0.742, 0.999],
+          a: [0.23, 0.059, 0.406],
+          b: [0.588, 0.342, 0.91],
+          c: [0.832, 0.737, 1.0],
           glow: 0.6,
         },
         stopped: { a: [0.09, 0.09, 0.11], b: [0.32, 0.32, 0.36], c: [0.63, 0.63, 0.67], glow: 0.3 },
@@ -1399,6 +1423,7 @@
         "uBands",
         "uFlow",
         "uThinking",
+        "uSpeak",
         "uRipple",
         "uApproval",
         "uContrast",
@@ -1445,6 +1470,7 @@
         };
         return [avg(0, 3), avg(3, 6), avg(6, 9), avg(9, 11)];
       }
+      const sSpeak = new Spring(0, 90, 16);
       const sAppear = new Spring(0, 190, 15); // pop-in with a little overshoot
       const sGlow = new Spring(0.25, 50, 10),
         sBusy = new Spring(0, 80, 12),
@@ -1677,6 +1703,8 @@
         gl.uniform1f(U.uAppear, Math.max(0, Math.min(1, appear)));
         gl.uniform1f(U.uTime, fx.time);
         gl.uniform1f(U.uThinking, fx.thinking ? 1 : 0);
+        sSpeak.t = state === "speaking" || state === "reading" || playbackActive() ? 1 : 0;
+        gl.uniform1f(U.uSpeak, Math.max(0, Math.min(1, sSpeak.step(dt))));
         gl.uniform1f(U.uRipple, fx.ripple);
         gl.uniform1f(U.uTap, fx.tap);
         gl.uniform1f(U.uPress, press);

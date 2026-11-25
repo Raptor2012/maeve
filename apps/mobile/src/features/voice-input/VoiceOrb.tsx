@@ -4,6 +4,7 @@ import { View } from "react-native";
 import Animated, { FadeIn, FadeOut, type SharedValue } from "react-native-reanimated";
 import { WebView } from "react-native-webview";
 
+import { replySpeechLevel } from "./replyPlayback";
 import { type VoiceOrbState, voiceOrbPage } from "./voiceOrbPage";
 
 const ORB_SIZE = 104;
@@ -25,11 +26,12 @@ export function VoiceOrb(props: {
     webView.current?.injectJavaScript(`window.setOrb(${JSON.stringify(state)});true;`);
   }, [state]);
 
-  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- feeds the microphone level to the orb's web page, outside React
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- feeds the microphone or Maeve's speech level to the orb's web page, outside React
   useEffect(() => {
-    if (state !== "dictating") return;
+    if (state !== "dictating" && state !== "speaking") return;
     const timer = setInterval(() => {
-      const level = audioLevels.value.at(-1) ?? 0;
+      const level = state === "dictating" ? (audioLevels.value.at(-1) ?? 0) : replySpeechLevel();
+      if (level === null) return;
       webView.current?.injectJavaScript(`window.setOrbLevel(${level.toFixed(3)});true;`);
     }, MIC_LEVEL_INTERVAL_MS);
     return () => clearInterval(timer);
