@@ -1068,8 +1068,9 @@ export function resolveWindowsServerAsarIgnoreGlobs(arch: typeof BuildArch.Type)
   ];
 }
 
-// Upstream allows 80; built-in voice adds 18 (speech helper, ONNX runtime DLLs, orb page).
-export const WINDOWS_PACKAGED_PAYLOAD_FILE_LIMIT = 104;
+// Upstream allows 80. Fork builds add voice (7 files) and ship the server compile cache, which
+// upstream's release installer leaves out and which grows with every release (about 35 files).
+export const WINDOWS_PACKAGED_PAYLOAD_FILE_LIMIT = 120;
 export const WINDOWS_SERVER_RESOURCE_SOURCE_DIR = "apps/desktop/prod-resources/windows-server";
 export const WINDOWS_SERVER_EXTRA_RESOURCES = [
   {
