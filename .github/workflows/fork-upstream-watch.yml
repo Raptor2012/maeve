@@ -1,0 +1,35 @@
+# Maeve fork: opens an issue when T3 Code ships a stable release the fork is not rebased on.
+# The fork's base is read from its default branch name (voice-<version>).
+name: Upstream watch
+
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    if: github.repository == 'Raptor2012/maeve'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Compare the fork's base with upstream's latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          latest=$(gh release view -R pingdotgg/t3code --json tagName -q .tagName)
+          branch=$(gh api "repos/$REPO" -q .default_branch)
+          base="v${branch#voice-}"
+          echo "upstream $latest, fork base $base"
+          if [ "$latest" = "$base" ]; then exit 0; fi
+          newest=$(printf '%s\n%s\n' "${latest#v}" "${base#v}" | sort -V | tail -1)
+          if [ "v$newest" != "$latest" ]; then exit 0; fi
+          title="Rebase onto T3 Code $latest"
+          if gh issue list -R "$REPO" --state open --search "\"$title\" in:title" --json number -q '.[].number' | grep -q .; then
+            exit 0
+          fi
+          gh issue create -R "$REPO" --title "$title" --body "T3 Code $latest is out (https://github.com/pingdotgg/t3code/releases/tag/$latest). The fork is on $base. Rebase \`$branch\` onto \`$latest\` as a new \`voice-${latest#v}\` branch, run the checks, cut a Windows test tag, then make it the default branch."
