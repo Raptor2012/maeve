@@ -3,7 +3,7 @@ import { AudioModule, requestRecordingPermissionsAsync } from "expo-audio";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import * as Base64 from "effect/encoding/Base64";
 import { AsyncResult } from "effect/reactivity";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from "react";
 import { AppState } from "react-native";
 import { makeMutable, type SharedValue } from "react-native-reanimated";
 
@@ -84,9 +84,13 @@ export function useHostDictation(input: {
   const cancelOnHost = useAtomCommand(voiceSpeechEnvironment.dictationCancel, {
     reportFailure: false,
   });
+  // Words arrive asynchronously and must reach the current composer callbacks, not the ones
+  // captured at start.
   const latest = useRef(input);
-  // oxlint-disable-next-line react/refs -- words arrive asynchronously and must reach the current composer callbacks, not the ones captured at start
-  latest.current = input;
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- mirrors the latest props into a ref for the asynchronous dictation callbacks
+  useLayoutEffect(() => {
+    latest.current = input;
+  });
   const [phase, setPhase] = useState<HostDictationPhase>("idle");
   const [audioLevels] = useState(() =>
     makeMutable<ReadonlyArray<number>>(Array<number>(VOICE_WAVEFORM_SAMPLE_COUNT).fill(0)),
@@ -148,13 +152,11 @@ export function useHostDictation(input: {
   };
 
   // A recording cannot continue once the app leaves the foreground.
-  const stopRef = useRef(stop);
-  // oxlint-disable-next-line react/refs -- the app-state listener below is registered once and must call the current stop
-  stopRef.current = stop;
+  const onBackground = useEffectEvent(() => stop());
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- finishes the dictation when the operating system backgrounds the app
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (state) => {
-      if (state !== "active") stopRef.current();
+      if (state !== "active") onBackground();
     });
     return () => subscription.remove();
   }, []);

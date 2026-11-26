@@ -18,11 +18,14 @@ it("keeps lazy Linux imports and worker bundles from executing desktop startup t
       "src/snapShot/GlobalShiftShortcutWorker.ts",
       "src/snapShot/RegionSnapShotWorker.ts",
       "src/snapShot/SnapShotAccessibilityWorker.ts",
+      "src/voice/VoiceEngineWorker.ts",
+      "src/voice/VoiceHotkeyWorker.ts",
     ];
     await Promise.all([
       NodeFSP.mkdir(NodePath.join(directory, "src/backend"), { recursive: true }),
       NodeFSP.mkdir(NodePath.join(directory, "src/electron"), { recursive: true }),
       NodeFSP.mkdir(NodePath.join(directory, "src/snapShot"), { recursive: true }),
+      NodeFSP.mkdir(NodePath.join(directory, "src/voice"), { recursive: true }),
     ]);
     await Promise.all([
       NodeFSP.writeFile(

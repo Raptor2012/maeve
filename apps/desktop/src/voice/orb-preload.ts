@@ -183,7 +183,7 @@ class OrbAudio {
   }
 
   flush(): void {
-    this.playback?.node.port.postMessage({ type: "flush" });
+    this.playback?.node.port.postMessage({ type: "flush" }, []);
   }
 
   playedSamples(id: number): number {
